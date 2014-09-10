@@ -1,0 +1,23 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+HiddenLayer	.\kagmnist.py	/^from mlp import HiddenLayer$/;"	i
+LeNetConvPoolLayer	.\kagmnist.py	/^class LeNetConvPoolLayer(object):$/;"	c
+LogisticRegression	.\kagmnist.py	/^from logistic_sgd import LogisticRegression$/;"	i
+T	.\kagmnist.py	/^import theano.tensor as T$/;"	i
+__init__	.\kagmnist.py	/^    def __init__(self, rng, input, filter_shape, image_shape, poolsize=(2, 2)):$/;"	m	class:LeNetConvPoolLayer
+conv	.\kagmnist.py	/^from theano.tensor.nnet import conv$/;"	i
+downsample	.\kagmnist.py	/^from theano.tensor.signal import downsample$/;"	i
+evaluate_lenet5	.\kagmnist.py	/^def evaluate_lenet5(learning_rate=0.1, n_epochs=200,$/;"	f
+experiment	.\kagmnist.py	/^def experiment(state, channel):$/;"	f
+load_data	.\kagmnist.py	/^def load_data(dataset, split_ratio = [0.5,0.25,0.25]):$/;"	f
+numpy	.\kagmnist.py	/^import numpy$/;"	i
+os	.\kagmnist.py	/^import os$/;"	i
+shared_dataset	.\kagmnist.py	/^def shared_dataset(data_xy, borrow=True):$/;"	f
+sys	.\kagmnist.py	/^import sys$/;"	i
+theano	.\kagmnist.py	/^import theano$/;"	i
+theano	.\kagmnist.py	/^import theano.tensor as T$/;"	i
+time	.\kagmnist.py	/^import time$/;"	i
