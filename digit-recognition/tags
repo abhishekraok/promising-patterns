@@ -5,19 +5,71 @@
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.8	//
 HiddenLayer	.\kagmnist.py	/^from mlp import HiddenLayer$/;"	i
+HiddenLayer	.\learn_and_predict.py	/^from mlp import HiddenLayer$/;"	i
+HiddenLayer	.\mlp.py	/^class HiddenLayer(object):$/;"	c
 LeNetConvPoolLayer	.\kagmnist.py	/^class LeNetConvPoolLayer(object):$/;"	c
+LeNetConvPoolLayer	.\learn_and_predict.py	/^class LeNetConvPoolLayer(object):$/;"	c
 LogisticRegression	.\kagmnist.py	/^from logistic_sgd import LogisticRegression$/;"	i
+LogisticRegression	.\learn_and_predict.py	/^from logistic_sgd import LogisticRegression$/;"	i
+LogisticRegression	.\logistic_sgd.py	/^class LogisticRegression(object):$/;"	c
+LogisticRegression	.\mlp.py	/^from logistic_sgd import LogisticRegression, load_data$/;"	i
+MLP	.\mlp.py	/^class MLP(object):$/;"	c
 T	.\kagmnist.py	/^import theano.tensor as T$/;"	i
+T	.\learn_and_predict.py	/^import theano.tensor as T$/;"	i
+T	.\logistic_sgd.py	/^import theano.tensor as T$/;"	i
+T	.\mlp.py	/^import theano.tensor as T$/;"	i
+__docformat__	.\logistic_sgd.py	/^__docformat__ = 'restructedtext en'$/;"	v
+__docformat__	.\mlp.py	/^__docformat__ = 'restructedtext en'$/;"	v
 __init__	.\kagmnist.py	/^    def __init__(self, rng, input, filter_shape, image_shape, poolsize=(2, 2)):$/;"	m	class:LeNetConvPoolLayer
+__init__	.\learn_and_predict.py	/^    def __init__(self, rng, input, filter_shape, image_shape, poolsize=(2, 2)):$/;"	m	class:LeNetConvPoolLayer
+__init__	.\logistic_sgd.py	/^    def __init__(self, input, n_in, n_out):$/;"	m	class:LogisticRegression
+__init__	.\mlp.py	/^    def __init__(self, rng, input, n_in, n_hidden, n_out):$/;"	m	class:MLP
+__init__	.\mlp.py	/^    def __init__(self, rng, input, n_in, n_out, W=None, b=None,$/;"	m	class:HiddenLayer
+cPickle	.\logistic_sgd.py	/^import cPickle$/;"	i
+cPickle	.\mlp.py	/^import cPickle$/;"	i
 conv	.\kagmnist.py	/^from theano.tensor.nnet import conv$/;"	i
+conv	.\learn_and_predict.py	/^from theano.tensor.nnet import conv$/;"	i
 downsample	.\kagmnist.py	/^from theano.tensor.signal import downsample$/;"	i
+downsample	.\learn_and_predict.py	/^from theano.tensor.signal import downsample$/;"	i
+errors	.\logistic_sgd.py	/^    def errors(self, y):$/;"	m	class:LogisticRegression
 evaluate_lenet5	.\kagmnist.py	/^def evaluate_lenet5(learning_rate=0.1, n_epochs=200,$/;"	f
+evaluate_lenet5	.\learn_and_predict.py	/^def evaluate_lenet5(learning_rate=0.1, n_epochs=200,$/;"	f
 experiment	.\kagmnist.py	/^def experiment(state, channel):$/;"	f
+experiment	.\learn_and_predict.py	/^def experiment(state, channel):$/;"	f
+gzip	.\logistic_sgd.py	/^import gzip$/;"	i
+gzip	.\mlp.py	/^import gzip$/;"	i
 load_data	.\kagmnist.py	/^def load_data(dataset, split_ratio = [0.5,0.25,0.25]):$/;"	f
+load_data	.\learn_and_predict.py	/^def load_data(dataset, split_ratio = [0.5,0.25,0.25]):$/;"	f
+load_data	.\logistic_sgd.py	/^def load_data(dataset):$/;"	f
+load_data	.\mlp.py	/^from logistic_sgd import LogisticRegression, load_data$/;"	i
+negative_log_likelihood	.\logistic_sgd.py	/^    def negative_log_likelihood(self, y):$/;"	m	class:LogisticRegression
 numpy	.\kagmnist.py	/^import numpy$/;"	i
+numpy	.\learn_and_predict.py	/^import numpy$/;"	i
+numpy	.\logistic_sgd.py	/^import numpy$/;"	i
+numpy	.\mlp.py	/^import numpy$/;"	i
 os	.\kagmnist.py	/^import os$/;"	i
+os	.\learn_and_predict.py	/^import os$/;"	i
+os	.\logistic_sgd.py	/^import os$/;"	i
+os	.\mlp.py	/^import os$/;"	i
+sgd_optimization_mnist	.\logistic_sgd.py	/^def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,$/;"	f
 shared_dataset	.\kagmnist.py	/^def shared_dataset(data_xy, borrow=True):$/;"	f
+shared_dataset	.\learn_and_predict.py	/^def shared_dataset(data_xy, borrow=True):$/;"	f
+shared_dataset	.\logistic_sgd.py	/^    def shared_dataset(data_xy, borrow=True):$/;"	f	function:load_data
 sys	.\kagmnist.py	/^import sys$/;"	i
+sys	.\learn_and_predict.py	/^import sys$/;"	i
+sys	.\logistic_sgd.py	/^import sys$/;"	i
+sys	.\mlp.py	/^import sys$/;"	i
+test_mlp	.\mlp.py	/^def test_mlp(learning_rate=0.01, L1_reg=0.00, L2_reg=0.0001, n_epochs=1000,$/;"	f
 theano	.\kagmnist.py	/^import theano$/;"	i
 theano	.\kagmnist.py	/^import theano.tensor as T$/;"	i
+theano	.\learn_and_predict.py	/^import theano$/;"	i
+theano	.\learn_and_predict.py	/^import theano.tensor as T$/;"	i
+theano	.\logistic_sgd.py	/^import theano$/;"	i
+theano	.\logistic_sgd.py	/^import theano.tensor as T$/;"	i
+theano	.\mlp.py	/^import theano$/;"	i
+theano	.\mlp.py	/^import theano.tensor as T$/;"	i
 time	.\kagmnist.py	/^import time$/;"	i
+time	.\learn_and_predict.py	/^import time$/;"	i
+time	.\logistic_sgd.py	/^import time$/;"	i
+time	.\mlp.py	/^import time$/;"	i
+urllib	.\logistic_sgd.py	/^        import urllib$/;"	i
