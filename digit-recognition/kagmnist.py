@@ -46,7 +46,7 @@ from logistic_sgd import LogisticRegression
 from mlp import HiddenLayer
 
 # My code - Abhishek Rao
-def load_data(dataset, split_ratio = [0.7,0.2,0.1]):
+def load_data(train_dataset, test_dataset, split_ratio = [0.8,0.2]):
     """ Change from kaggle data format to evaluate_lenet5 format.
 
     Takes numpy array of where rows are samples and columns are
@@ -67,17 +67,23 @@ def load_data(dataset, split_ratio = [0.7,0.2,0.1]):
     print '... loading data'
 
     # Load the dataset
-    alldata = numpy.loadtxt(open(dataset,"rb"),delimiter=",",skiprows=1)
-
-    N = len(alldata)
-    #train_ratio, validation_ratio, test_ratio = numpy.round(
-    	#	N*split_ratio)
-    split_sum = numpy.cumsum(split_ratio[:-1])
-    split_int = numpy.round([i*N for i in split_sum])
-    X = alldata[:,1:]
-    y = alldata[:,0]
-    train_set_x, valid_set_x, test_set_x = numpy.split(X,split_int)
-    train_set_y, valid_set_y, test_set_y = numpy.split(y,split_int)
+    traindataset = numpy.loadtxt(open(train_dataset,"rb"),delimiter=",",skiprows=1)
+    testdata = numpy.loadtxt(open(test_dataset,"rb"),delimiter=",",skiprows=1)
+    N = len(traindataset)
+    X = traindataset[:,1:]
+    y = traindataset[:,0]
+    N_train = numpy.round(N*split_ratio[0])
+    train_set_x, valid_set_x = X[:N_train], X[N_train:]
+    test_set_x = testdata[:,1:]
+    train_set_y, valid_set_y= y[:N_train], y[N_train:]
+    test_set_y = testdata[:,0]
+    # Print data sizes
+    print ' Size of train Set x, train set y is ', train_set_x.shape,\
+        train_set_y.shape
+    print ' Size of valid Set x, valid set y is ', valid_set_x.shape,\
+        valid_set_y.shape
+    print ' Size of test Set x, test set y is ', test_set_x.shape,\
+        test_set_y.shape
     test_set_x, test_set_y = shared_dataset((test_set_x, test_set_y))
     valid_set_x, valid_set_y = shared_dataset((valid_set_x, valid_set_y))
     train_set_x, train_set_y = shared_dataset((train_set_x, train_set_y))
@@ -180,7 +186,8 @@ class LeNetConvPoolLayer(object):
 # Main
 learning_rate=0.1
 n_epochs=200
-dataset='train_small.csv'
+train_dataset='train_small.csv'
+test_dataset='test_small.csv'
 nkerns=[20, 50]
 batch_size=50
 """ Demonstrates lenet on MNIST dataset
@@ -192,8 +199,9 @@ batch_size=50
 :type n_epochs: int
 :param n_epochs: maximal number of epochs to run the optimizer
 
-:type dataset: string
-:param dataset: path to the dataset used for training /testing (MNIST here)
+:type train_dataset: string
+:param dataset: path to the training + validation dataset used for
+    training /testing (MNIST here)
 
 :type nkerns: list of ints
 :param nkerns: number of kernels on each layer
@@ -201,7 +209,7 @@ batch_size=50
 
 rng = numpy.random.RandomState(23455)
 
-datasets = load_data(dataset)
+datasets = load_data(train_dataset,test_dataset)
 train_set_x, train_set_y = datasets[0]
 valid_set_x, valid_set_y = datasets[1]
 test_set_x, test_set_y = datasets[2]
@@ -378,7 +386,6 @@ print('Best validation score of %f %% obtained at iteration %i,'\
 print >> sys.stderr, ('The code for file ' +
                         os.path.split(__file__)[1] +
                         ' ran for %.2fm' % ((end_time - start_time) / 60.))
-print 'The predicted value is ', predicted_value()
 
 def experiment(state, channel):
     evaluate_lenet5(state.learning_rate, dataset=state.dataset)
@@ -386,3 +393,29 @@ def experiment(state, channel):
     #the number of rows in the input. It should give the target
     #target to the example with the same index in the input.
 
+
+
+#Abhishek's code
+######################
+# BUILD PREDICTIVE MODEL #
+######################
+print '... prediction stage'
+#layer0_input = x.reshape((-1, 1, 28, 28))
+#layer0 = LeNetConvPoolLayer(rng, input=layer0_input,
+#        image_shape=(batch_size, 1, 28, 28),
+#        filter_shape=(nkerns[0], 1, 5, 5), poolsize=(2, 2))
+#layer1 = LeNetConvPoolLayer(rng, input=layer0.output,
+#        image_shape=(batch_size, nkerns[0], 12, 12),
+#        filter_shape=(nkerns[1], nkerns[0], 5, 5), poolsize=(2, 2))
+#layer2_input = layer1.output.flatten(2)
+#layer2 = HiddenLayer(rng, input=layer2_input, n_in=nkerns[1] * 4 * 4,
+#                        n_out=500, activation=T.tanh)
+#layer3 = LogisticRegression(input=layer2.output, n_in=500, n_out=10)
+predicted_value = theano.function([index], layer3.y_pred,
+            givens={
+            x: test_set_x[index * batch_size: (index + 1) * batch_size]})
+# End of Abhishek's code
+print 'The predicted value is ', predicted_value()
+all_predicted_test = [predicted_value(i) for i
+                      in xrange(n_valid_batches)]
+numpy.savetxt('predicted_out.csv',all_predicted_test)
