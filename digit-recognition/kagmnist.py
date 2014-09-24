@@ -29,6 +29,9 @@ References:
 
 """
 import os
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 import sys
 import time
 import numpy
@@ -67,7 +70,7 @@ def load_data(train_dataset, test_dataset, split_ratio = [0.8,0.2]):
     print '... loading data'
 
     # Load the dataset
-    traindataset = numpy.loadtxt(open(train_dataset,"rb"),delimiter=",",skiprows=1)
+    traindataset = numpy.loadtxt(train_dataset,delimiter=",",skiprows=1)
     testdata = numpy.loadtxt(open(test_dataset,"rb"),delimiter=",",skiprows=1)
     N = len(traindataset)
     X = traindataset[:,1:]
