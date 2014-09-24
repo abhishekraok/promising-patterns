@@ -106,6 +106,7 @@ class LogisticRegression(object):
         :param y: corresponds to a vector that gives for each example the
                   correct label
 
+        Note: we use the mean instead of the sum so that
               the learning rate is less dependent on the batch size
         """
         # y.shape[0] is (symbolically) the number of rows in y, i.e.,
@@ -118,7 +119,7 @@ class LogisticRegression(object):
         # LP[n-1,y[n-1]]] and T.mean(LP[T.arange(y.shape[0]),y]) is
         # the mean (across minibatch examples) of the elements in v,
         # i.e., the mean log-likelihood across the minibatch.
-        return self.p_y_given_x
+        return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
 
     def errors(self, y):
         """Return a float representing the number of errors in the minibatch
