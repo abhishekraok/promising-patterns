@@ -283,10 +283,10 @@ predicted_value = theano.function([], layer3.y_pred,
 # End of Abhishek's code
 
 # create a function to compute the mistakes that are made by the model
-#test_model = theano.function([index], layer3.errors(y),
-#            givens={
-#            x: test_set_x[index * batch_size: (index + 1) * batch_size],
-#            y: test_set_y[index * batch_size: (index + 1) * batch_size]})
+test_model = theano.function([index], layer3.errors(y),
+            givens={
+            x: test_set_x[index * batch_size: (index + 1) * batch_size],
+            y: test_set_y[index * batch_size: (index + 1) * batch_size]})
 
 validate_model = theano.function([index], layer3.errors(y),
         givens={
@@ -372,8 +372,8 @@ while (epoch < n_epochs) and (not done_looping):
                 best_iter = iter
 
                 # test it on the test set
-                #test_losses = [test_model(i) for i in xrange(n_test_batches)]
-                test_score = 0.0000 # numpy.mean(test_losses)
+                test_losses = [test_model(i) for i in xrange(n_test_batches)]
+                test_score = numpy.mean(test_losses)
                 print(('     epoch %i, minibatch %i/%i, test error of best '
                         'model %f %%') %
                         (epoch, minibatch_index + 1, n_train_batches,
