@@ -102,7 +102,7 @@ if __name__ == '__main__':
     n_in = train_set_x.get_value(borrow=True).shape[1]
     # construct the MLP class
     classifier = mlp.MLP(rng=rng, input=x, n_in=n_in,
-                     n_hidden=n_hidden, n_out=1)
+                     n_hidden=n_hidden, n_out=2)
 
     cost = classifier.negative_log_likelihood(y) \
          + L1_reg * classifier.L1 \
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     print '... training'
 
     # early-stopping parameters
-    patience = 1000  # look as this many examples regardless
+    patience = 10000  # look as this many examples regardless
     patience_increase = 2  # wait this much longer when a new best is
                            # found
     improvement_threshold = 0.995  # a relative improvement of this much is

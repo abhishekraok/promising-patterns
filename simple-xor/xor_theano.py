@@ -7,7 +7,8 @@ import numpy
 import theano
 import theano.tensor as T
 if not sys.path.count("../lib"): sys.path.append("../lib")
-import log_debug
+import mlp2
+import matplotlib.pyplot as plt
 
 
 def load_data(train_filename, test_filename,split_ratio = [0.8,0.2]):
@@ -22,7 +23,7 @@ def load_data(train_filename, test_filename,split_ratio = [0.8,0.2]):
     train_set_x, valid_set_x = X[:N_train], X[N_train:]
     test_set_x = testdataset[:,:-1]
     n_out=1
-    test_set_y = testdataset[:,-1].reshape(-1,n_out)
+    test_set_y = testdataset[:,-1]
     train_set_y, valid_set_y= y[:N_train], y[N_train:]
     def shared_dataset(data_xy, borrow=True):
         """ Function that loads the dataset into shared variables
@@ -63,8 +64,6 @@ def load_data(train_filename, test_filename,split_ratio = [0.8,0.2]):
     return rval
 
 
-
-
 if __name__ == '__main__':
     """ Start of main"""
     learning_rate=0.01
@@ -79,7 +78,6 @@ if __name__ == '__main__':
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]
     test_set_x, test_set_y = datasets[2]
-    #pdb.set_trace()
     # compute number of minibatches for training, validation and testing
     n_train_batches = train_set_x.get_value(borrow=True).shape[0]
     n_valid_batches = valid_set_x.get_value(borrow=True).shape[0]
@@ -87,9 +85,6 @@ if __name__ == '__main__':
     n_train_batches /= batch_size
     n_valid_batches /= batch_size
     n_test_batches /= batch_size
-    #classifier = mlp.MLP(rng, )
-
-    ######################
     # BUILD ACTUAL MODEL #
     ######################
     print '... building the model'
@@ -103,26 +98,64 @@ if __name__ == '__main__':
     rng = numpy.random.RandomState(1234)
     n_in = train_set_x.get_value(borrow=True).shape[1]
     # construct the MLP class
-    #classifier = mlp.MLP(rng=rng, input=x, n_in=n_in,
-    #                 n_hidden=n_hidden, n_out=1)
+    classifier = mlp2.MLP(rng=rng, input=x, n_in=n_in,
+                     n_hidden=n_hidden, n_out=2)
 
-    classifier =log_debug.LogisticRegression(input=x, n_in=n_in, n_out=1)
 
-    cost = classifier.p_y_given_x# \
+    # the cost we minimize during training is the negative log likelihood of
+    # the model plus the regularization terms (L1 and L2); cost is expressed
+    # here symbolically
+    cost = classifier.negative_log_likelihood(y) \
+         + L1_reg * classifier.L1 \
+         + L2_reg * classifier.L2_sqr
 
-    train_model = theano.function(inputs=[index], outputs=classifier.ng2,
+    # compiling a Theano function that computes the mistakes that are made
+    # by the model on a minibatch
+    test_model = theano.function(inputs=[index],
+            outputs=classifier.errors(y),
             givens={
-                y: train_set_y[index * batch_size:(index + 1) * batch_size]})
-    print train_model(1)
+                x: test_set_x[index * batch_size:(index + 1) * batch_size],
+                y: test_set_y[index * batch_size:(index + 1) * batch_size]})
 
-"""
+    validate_model = theano.function(inputs=[index],
+            outputs=classifier.errors(y),
+            givens={
+                x: valid_set_x[index * batch_size:(index + 1) * batch_size],
+                y: valid_set_y[index * batch_size:(index + 1) * batch_size]})
+
+    # compute the gradient of cost with respect to theta (sotred in params)
+    # the resulting gradients will be stored in a list gparams
+    gparams = []
+    for param in classifier.params:
+        gparam = T.grad(cost, param)
+        gparams.append(gparam)
+
+    # specify how to update the parameters of the model as a list of
+    # (variable, update expression) pairs
+    updates = []
+    # given two list the zip A = [a1, a2, a3, a4] and B = [b1, b2, b3, b4] of
+    # same length, zip generates a list C of same size, where each element
+    # is a pair formed from the two lists :
+    #    C = [(a1, b1), (a2, b2), (a3, b3), (a4, b4)]
+    for param, gparam in zip(classifier.params, gparams):
+        updates.append((param, param - learning_rate * gparam))
+
+    # compiling a Theano function `train_model` that returns the cost, but
+    # in the same time updates the parameter of the model based on the rules
+    # defined in `updates`
+    train_model = theano.function(inputs=[index], outputs=cost,
+            updates=updates,
+            givens={
+                x: train_set_x[index * batch_size:(index + 1) * batch_size],
+                y: train_set_y[index * batch_size:(index + 1) * batch_size]})
+
     ###############
     # TRAIN MODEL #
     ###############
     print '... training'
 
     # early-stopping parameters
-    patience = 1000  # look as this many examples regardless
+    patience = 10000  # look as this many examples regardless
     patience_increase = 2  # wait this much longer when a new best is
                            # found
     improvement_threshold = 0.995  # a relative improvement of this much is
@@ -138,8 +171,12 @@ if __name__ == '__main__':
     best_iter = 0
     test_score = 0.
     start_time = time.clock()
+
     epoch = 0
     done_looping = False
+
+    fig, ax = plt.subplots()
+    fig.show()
 
     while (epoch < n_epochs) and (not done_looping):
         epoch = epoch + 1
@@ -158,6 +195,9 @@ if __name__ == '__main__':
                 print('epoch %i, minibatch %i/%i, validation error %f %%' %
                      (epoch, minibatch_index + 1, n_train_batches,
                       this_validation_loss * 100.))
+
+                classifier.visualize(x,test_set_x.get_value(),
+                         classifier.predict(x, test_set_x),fig,ax)
 
                 # if we got the best validation score until now
                 if this_validation_loss < best_validation_loss:
@@ -191,5 +231,5 @@ if __name__ == '__main__':
                           os.path.split(__file__)[1] +
                           ' ran for %.2fm' % ((end_time - start_time) / 60.))
 
-print ' End '
-"""
+    print 'The test set x is ', test_set_x.get_value()
+    print 'The predicted value is ', classifier.predict(x,test_set_x)
