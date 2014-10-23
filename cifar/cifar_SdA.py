@@ -47,14 +47,6 @@ from utils_abhi import pkl_to_datasets
 from mlp import HiddenLayer
 from dA import dA
 
-
-def unpickle_cifar(file):
-    import cPickle
-    fo = open(file, 'rb')
-    dict = cPickle.load(fo)
-    fo.close()
-    return dict
-
 class SdA(object):
     """Stacked denoising auto-encoder class (SdA)
 
