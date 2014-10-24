@@ -7,6 +7,54 @@ Author: Abhishek Rao
 import numpy
 import theano
 import theano.tensor as T
+import matplotlib.pyplot as plt
+
+def get_images(input_folder='Paintings'):
+    """ Takes folder containing folders of images and converts them into data
+    suitable for theano classification"""
+    import os
+    import glob
+    from PIL import Image
+    new_size = (32,32)
+    Xl = [] # List that will hold all the (X,y) values
+    # Get the subfolders of the input folder
+    folders = [i[1] for i in os.walk(input_folder) if i[1]!=[]]
+    for painting_style in folders[0]:
+        # painting_style is the name of the sub folders
+        for infile in glob.glob('./' + input_folder+ '/' + painting_style \
+                                + '/*.jpg'):
+            file, ext = os.path.splitext(infile)
+            im = Image.open(infile)
+            im.thumbnail(new_size, Image.ANTIALIAS)
+            data_im = numpy.array(im)
+            flat_d = data_im.flatten() # flatten it
+            # Don't think need to normalize, they're not doing it in example
+            #normalized = (flat_d.astype(numpy.float32) - 128)/128
+            empty_d = numpy.zeros(new_size[0]*new_size[1]*3,dtype=numpy.int16)
+            empty_d[:flat_d.shape[0]] = flat_d
+            # Append index of the folder
+            Xandy = numpy.hstack((empty_d, folders[0].index(painting_style)))
+            Xl.append(Xandy)
+    N_train = int(len(Xl)*0.8)
+    train_data = numpy.vstack(Xl[:N_train])
+    test_data = numpy.vstack(Xl[N_train:])
+    numpy.savetxt('Paintings_train.csv', train_data,fmt='%d',delimiter=',')
+    numpy.savetxt('Paintings_test.csv', test_data,fmt='%d',delimiter=',')
+    return train_data
+
+if __name__ == '__main__':
+    J = get_images()
+
+def paint_to_data(fn):
+    """Given a painting jpg file, convert that into numpy array"""
+    from PIL import Image
+    import glob, os
+    size = 128, 128
+    for infile in glob.glob("*.jpg"):
+        file, ext = os.path.splitext(infile)
+        im = Image.open(infile)
+        im.thumbnail(size, Image.ANTIALIAS)
+        im.save(file + ".thumbnail", "JPEG")
 
 def unpickle_cifar(file):
     import cPickle
