@@ -34,6 +34,10 @@ import gzip
 import os
 import sys
 import time
+import os
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 import numpy
 
@@ -300,7 +304,8 @@ pretrain_lr=0.001
 training_epochs=1000
 batch_size=10
 """
-Demonstrates how to train and test a stochastic dN_train+N_validenoising autoencoder.
+Demonstrates how to train and test a stochastic dN_train+N_validenoising
+autoencoder.
 
 This is demonstrated on MNIST.
 
@@ -318,9 +323,13 @@ This is demonstrated on MNIST.
 :param n_iter: maximal number of iterations ot run the optimizer
 
 """
-
-datasets = pkl_to_datasets('cifar-10-batches-py/data_batch_1')
-
+# Change here
+datasets = pkl_to_datasets(['cifar-10-batches-py/data_batch_1',
+#                            'cifar-10-batches-py/data_batch_2',
+#                            'cifar-10-batches-py/data_batch_3',
+#                            'cifar-10-batches-py/data_batch_4',
+                            'cifar-10-batches-py/data_batch_5'])
+# End of change
 train_set_x, train_set_y = datasets[0]
 valid_set_x, valid_set_y = datasets[1]
 test_set_x, test_set_y = datasets[2]
@@ -380,7 +389,7 @@ train_fn, validate_model, test_model = sda.build_finetune_functions(
 
 print '... finetunning the model'
 # early-stopping parameters
-patience = 10 * n_train_batches  # look as this many examples regardless
+patience = 100 * n_train_batches  # look as this many examples regardless
 patience_increase = 2.  # wait this much longer when a new best is
                         # found
 improvement_threshold = 0.995  # a relative improvement of this much is

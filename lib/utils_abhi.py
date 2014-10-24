@@ -15,15 +15,20 @@ def unpickle_cifar(file):
     fo.close()
     return dict
 
-def pkl_to_datasets(pickle_file='cifar-10-batches-py/data_batch_1'
+def pkl_to_datasets(pickle_files=['cifar-10-batches-py/data_batch_1']
                    ,split_ratio=[0.8,0.1]):
     """
     Converts to theano dataset from pickled file given in
     http://www.cs.toronto.edu/~kriz/cifar.html
     """
-    all_data_dictionary = unpickle_cifar(pickle_file)
-    X = all_data_dictionary['data']
-    y = numpy.array(all_data_dictionary['labels'])
+    Xl = []
+    yl = []
+    for fn in pickle_files:
+	    all_data_dictionary = unpickle_cifar(fn)
+	    Xl.append(all_data_dictionary['data'])
+	    yl.append(numpy.array(all_data_dictionary['labels']))
+    X = numpy.vstack(Xl)
+    y = numpy.concatenate(yl)
     N = X.shape[0]
     N_train = int(N*split_ratio[0])
     N_valid = int(N*split_ratio[1])
