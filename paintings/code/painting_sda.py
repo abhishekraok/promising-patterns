@@ -68,8 +68,8 @@ This is demonstrated on MNIST.
 
 """
 # Change here
-datasets = load_data('../Data/Paintings/Paintings_train.csv',
-                     '../Data/Paintings/Paintings_test.csv')
+datasets = load_data('../data/Paintings/Paintings_train.csv',
+                     '../data/Paintings/Paintings_test.csv')
 # End of change
 train_set_x, train_set_y = datasets[0]
 valid_set_x, valid_set_y = datasets[1]
@@ -80,14 +80,14 @@ n_train_batches = train_set_x.get_value(borrow=True).shape[0]
 n_train_batches /= batch_size
 
 n_ins = train_set_x.get_value(borrow=True).shape[1]
-
+n_outs = 5
 # numpy random generator
 numpy_rng = numpy.random.RandomState(89677)
 print '... building the model'
 # construct the stacked denoising autoencoder class
 sda = SdA(numpy_rng=numpy_rng, n_ins= n_ins,
             hidden_layers_sizes=[1000, 1000, 1000],
-            n_outs=2)
+            n_outs=n_outs)
 
 #########################
 # PRETRAINING THE MODEL #
