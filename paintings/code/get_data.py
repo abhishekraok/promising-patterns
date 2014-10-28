@@ -4,7 +4,7 @@ Code to get paintings from web and convert it into numpy file.
 Date: 26 Oct 2014
 Author: Abhishek Rao
 
-The general algorithm is as follows.
+The general algorithm is as follows:
 
 1. List all styles you want
 2. For each style create a folder
@@ -16,10 +16,12 @@ The general algorithm is as follows.
    a matrix where the rows are samples, columns = features + label,
    hence the number of columns = number of features + 1. Save this numpy matrix
    as csv file, create two, one for train, and one for test.
+
+There is also a utility to visualize the downloaded data.
 """
+__docformat__ = 'restructedtext en'
+
 import numpy
-import theano
-import theano.tensor as T
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -30,7 +32,7 @@ import os
 
 # Genearl Parameters
 # TODO Set this to 99 for normal run, for debug set 2
-Max_Page_Depth = 99 # How many 'Next Page' links to follow
+Max_Page_Depth = 1 # How many 'Next Page' links to follow
 
 def crawl_style(start_link):
     """ Gets all the urls of images starting from start_link and keeps going
@@ -38,7 +40,6 @@ def crawl_style(start_link):
     thumbnail_links = [] # place to store all the JPG links
     current_link = start_link
     for count_unused in range(Max_Page_Depth): # A useless counter
-        print 'Current page is ', current_link
         current_page = requests.get(current_link)
         data = current_page.text
         soup = BeautifulSoup(data)
@@ -47,9 +48,10 @@ def crawl_style(start_link):
         #r2  = requests.get(domain + links[2])
         links = lcont[0].find_all('a')
         lns2 = [i.find('img') for i in links]
+        print 'Current page is ', current_link, ' Current link count is ' \
+            ,len(thumbnail_links)
         thumbnail_links += [i.get('src') for i in lns2 if i!=None]
         # all thumbnail pics in one page
-
         # next get 'next' page link
         # Next Xpath /html/body/div[1]/div/div[2]/div[1]/div[8]/div/a[11]
         # Not using xpath here, found this at http://stackoverflow.com/questions/
@@ -76,7 +78,6 @@ def get_style(style='abstract-art',
               root_path='../Data/Paintings/'):
     """Given a style of painting, downloads all the thumbnails from wikiart
     and saves it in a folder"""
-    print 'Currently getting style ', style
     domain = "http://www.wikiart.org"
     current_link = domain + "/en/paintings-by-style/" + style
     ths =crawl_style(current_link)
@@ -88,40 +89,40 @@ def get_style(style='abstract-art',
         im = link_to_PILim(i)
         if im is None:
             continue
-        length = len(i)
         file_name = (re.sub(u"[\\\\,\:,\/]", '_', urllib.url2pathname(i)))[31:]
         im.resize(new_size).save(directory + '/' + file_name)
+    print 'Saved ', len(ths), ' files into dir:', style
 
 def get_all_styles(root_path='../Data/Paintings/'):
     """
     Get many styles of paintings
     """
+    # Check if the root path exists, else create it
+    if not os.path.exists(root_path):
+        os.makedirs(root_path)
     print ' Getting many styles of paintings from internet... '
-    styles = ['color-field-painting',
+    styles = [#'color-field-painting',
             'realism',
-            'impressionism',
-            'surrealism',
+            #'impressionism',
+            #'surrealism',
             'abstract-art']
     for particular_style in styles:
         get_style(particular_style, root_path)
 
-def images_to_numpy(input_folder='../Data/Paintings/',
-                    resize=False):
+def images_to_numpy(input_folder='../Data/Paintings/'):
     """ Takes folder containing folders of images and converts them into data
     suitable for theano classification
 
     The input_folder is expected to contain different styles of paintings to be
     classified, each subfolder whose name is the style.
 
-    :input_folder (Paintings): A string that is path to the folder that contains
-        paintings.
-    :resize (False): Bool to decide resize or not
+    :type input_folder : string
+    :param input_folder : path to the folder that contains paintings.
+
     """
     import os
     import glob
-    from PIL import Image
     print 'Converting images into Numpy matrix'
-    new_size = (64,64)
     Xl = [] # List that will hold all the (X,y) values
     # Get the subfolders of the input folder
     folders = [i[1] for i in os.walk(input_folder) if i[1]!=[]]
@@ -131,23 +132,29 @@ def images_to_numpy(input_folder='../Data/Paintings/',
         for infile in glob.glob(input_folder+ '/' + painting_style \
                                 + '/*.jpg'):
             file, ext = os.path.splitext(infile)
-            im = Image.open(infile)
-            if resize:
-                im.thumbnail(new_size, Image.ANTIALIAS)
-            data_im = numpy.array(im)
+            import matplotlib.image as mpimg
+            data_im = mpimg.imread(infile)
+            #im = Image.open(infile)
+            #if resize:
+            #    im.thumbnail(new_size, Image.ANTIALIAS)
+            #data_im = numpy.array(im)
             flat_d = data_im.flatten() # flatten it
             # Don't think need to normalize, they're not doing it in example
             #normalized = (flat_d.astype(numpy.float32) - 128)/128
-            empty_d = numpy.zeros(new_size[0]*new_size[1]*3,dtype=numpy.int16)
-            empty_d[:flat_d.shape[0]] = flat_d
+            #empty_d = numpy.zeros(new_size[0]*new_size[1]*3,dtype=numpy.int16)
+            #empty_d[:flat_d.shape[0]] = flat_d
             # Append index of the folder
-            Xandy = numpy.hstack((empty_d, folders[0].index(painting_style)))
+            yi = folders[0].index(painting_style)
+            Xandy = numpy.hstack((flat_d,yi))
             Xl.append(Xandy)
     from random import shuffle # Shuffle the list
     shuffle(Xl)
     N_train = int(len(Xl)*0.9)
     train_data = numpy.vstack(Xl[:N_train])
     test_data = numpy.vstack(Xl[N_train:])
+    print ' Training sample count = ', len(train_data)
+    print ' Testing sample count = ', len(test_data)
+    print ' Feature dimensionality = ', train_data.shape[1] - 1
     numpy.savetxt(input_folder + 'Paintings_train.csv',
                   train_data,fmt='%d',delimiter=',')
     numpy.savetxt(input_folder + 'Paintings_test.csv',
@@ -155,14 +162,37 @@ def images_to_numpy(input_folder='../Data/Paintings/',
     return train_data
 
 def unpickle_cifar(file):
+    """ Loads variable from file"""
     import cPickle
     fo = open(file, 'rb')
     dict = cPickle.load(fo)
     fo.close()
     return dict
 
+def visualize_paintings(fn):
+    """ Function to visualize the saved numpy data file.
+
+    :type fn: string
+    :param fn: the numpy file to laod, expected to have ncols*nrows where
+               the columns correspond to the samples and rows are features +
+               label
+    """
+    all_data = numpy.loadtxt(fn,delimiter=',',dtype=numpy.uint8)
+    some_data = all_data[:9] # take only some of them to visualize
+    X = some_data[:,:-1]
+    y = some_data[:,-1]
+    some_data_rs = [i.reshape(64,64,3) for i in X]
+    import matplotlib.pyplot as plt
+    for i in range(len(X)):
+        plt.subplot(3,3,i)
+        plt.imshow(some_data_rs[i],interpolation='None')
+        plt.colorbar()
+        plt.title(str(y[i]))
+    plt.show()
+
 
 if __name__ == '__main__':
-    root_path='../Data/Paintings/'
-    get_all_styles(root_path)
+    root_path='../data/Paintings3/'
+    #get_all_styles(root_path)
     images_to_numpy(root_path)
+    visualize_paintings('../data/Paintings3/Paintings_test.csv')
