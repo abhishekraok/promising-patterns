@@ -32,7 +32,7 @@ import os
 
 # Genearl Parameters
 # TODO Set this to 99 for normal run, for debug set 2
-Max_Page_Depth = 1 # How many 'Next Page' links to follow
+Max_Page_Depth = 99 # How many 'Next Page' links to follow
 
 def crawl_style(start_link):
     """ Gets all the urls of images starting from start_link and keeps going
@@ -104,8 +104,10 @@ def get_all_styles(root_path='../Data/Paintings/'):
     styles = [#'color-field-painting',
             'realism',
             #'impressionism',
+            'expressionism',
             #'surrealism',
-            'abstract-art']
+            #'abstract-art'
+              ]
     for particular_style in styles:
         get_style(particular_style, root_path)
 
@@ -118,6 +120,9 @@ def images_to_numpy(input_folder='../Data/Paintings/'):
 
     :type input_folder : string
     :param input_folder : path to the folder that contains paintings.
+
+    Returns a tuple of two elements, first is the name of the saved training
+    numpy file and second is test file.
 
     """
     import os
@@ -155,11 +160,11 @@ def images_to_numpy(input_folder='../Data/Paintings/'):
     print ' Training sample count = ', len(train_data)
     print ' Testing sample count = ', len(test_data)
     print ' Feature dimensionality = ', train_data.shape[1] - 1
-    numpy.savetxt(input_folder + 'Paintings_train.csv',
-                  train_data,fmt='%d',delimiter=',')
-    numpy.savetxt(input_folder + 'Paintings_test.csv',
-                  test_data,fmt='%d',delimiter=',')
-    return train_data
+    train_filename = input_folder + 'Paintings_train.csv'
+    test_filename = input_folder + 'Paintings_test.csv'
+    numpy.savetxt(train_filename, train_data,fmt='%d',delimiter=',')
+    numpy.savetxt(test_filename, test_data,fmt='%d',delimiter=',')
+    return (train_filename, test_filename)
 
 def unpickle_cifar(file):
     """ Loads variable from file"""
@@ -192,7 +197,7 @@ def visualize_paintings(fn):
 
 
 if __name__ == '__main__':
-    root_path='../data/Paintings3/'
-    #get_all_styles(root_path)
+    root_path='../data/Paintings/two_class/'
+    get_all_styles(root_path)
     images_to_numpy(root_path)
-    visualize_paintings('../data/Paintings3/Paintings_test.csv')
+    visualize_paintings(root_path+ 'Paintings_test.csv')
