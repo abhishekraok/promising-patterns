@@ -3,8 +3,8 @@ import sys
 import time
 import numpy
 if not sys.path.count("../../lib"): sys.path.append("../../lib")
-from utils_abhi import load_data
-from SdA import SdA
+from utils_abhi import load_data, get_y_from_shared
+from SdA2 import SdA2
 
 # change current working directory to the directory of the file
 abspath = os.path.abspath(__file__)
@@ -64,9 +64,15 @@ def test_sda(
     numpy_rng = numpy.random.RandomState(89677)
     print '... building the model'
     # construct the stacked denoising autoencoder class
-    sda = SdA(numpy_rng=numpy_rng, n_ins= n_ins,
+    sda = SdA2(numpy_rng=numpy_rng, n_ins= n_ins,
                 hidden_layers_sizes=[1000, 1000, 1000],
-                n_outs=n_outs)
+                n_outs=n_outs, corruption_levels=[.1,.2,.3])
+
+    #Checking precision
+    # get python variable from theano variable
+    test_y_pyvar = get_y_from_shared(test_set_y)
+    test_x_pyvar = test_set_x.get_value()
+    print 'The precision is ', sda.precision(test_x_pyvar, test_y_pyvar)
 
     #########################
     # PRETRAINING THE MODEL #
@@ -172,4 +178,16 @@ def test_sda(
     print >> sys.stderr, ('The training code for file ' +
                             os.path.split(__file__)[1] +
                             ' ran for %.2fm' % ((end_time - start_time) / 60.))
-    return (best_validation_loss,test_score)
+    #Checking precision
+    # get python variable from theano variable
+    test_y_pyvar = get_y_from_shared(test_set_y)
+    test_x_pyvar = test_set_x.get_value()
+    print 'The precision is ', sda.precision(test_x_pyvar, test_y_pyvar)
+    print 'The recall is ', sda.recall(test_x_pyvar, test_y_pyvar)
+    # End
+    return sda
+
+
+if __name__ == '__main__':
+    sda = test_sda()
+

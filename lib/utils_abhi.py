@@ -128,3 +128,10 @@ def load_data(train_filename, test_filename,split_ratio = [0.8,0.2]):
     rval = [(train_set_x, train_set_y), (valid_set_x, valid_set_y),
             (test_set_x, test_set_y)]
     return rval
+
+def get_y_from_shared(shared_y):
+    """Given a theano symbol of shared y gives back normal python var"""
+    x = T.vector('x')
+    get_y_func = theano.function([], x, givens={x:shared_y})
+    return get_y_func()
+

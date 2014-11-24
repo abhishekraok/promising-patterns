@@ -9,7 +9,7 @@ Subclass SdA2 created out of SdA
 import numpy
 import theano
 import SdA
-from sklearn.metrics import precision_score
+from sklearn.metrics import precision_score, recall_score
 
 
 class SdA2(SdA.SdA):
@@ -60,13 +60,20 @@ class SdA2(SdA.SdA):
         y_pred = self.predict(X)
         return precision_score(y, y_pred)
 
+    def recall(self,X,y):
+        """ Given input X and y, predicts the output ypred and compares it with
+        y and uses sklear recall calculator utility to find the recall of
+        prediction"""
+        y_pred = self.predict(X)
+        return recall_score(y, y_pred)
+
 if __name__ == '__main__':
     # numpy random generator
     numpy_rng = numpy.random.RandomState(89677)
     # creating the classifier
     sda = SdA2(numpy_rng=numpy_rng, n_ins=2,
             hidden_layers_sizes=[2],
-            n_outs=1)
+            n_outs=2)
     # getting some test values
     X = numpy.random.rand(3,2)
     # prediction before training
