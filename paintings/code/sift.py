@@ -1,14 +1,13 @@
 import cv2
-import numpy as np
 
-img = cv2.imread('../data/Paintings/two_class/realism/ges_vasily-tropinin_zagoskin-michael.jpg\!xlSmall.jpg')
+img = cv2.imread('../data/Paintings/two_class/realism/butterfly.jpg')
 gray= cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-sift = cv2.SIFT()
-kp = sift.detect(gray,None)
+surf = cv2.SURF()
+kp = surf.detect(gray,None)
 
 img=cv2.drawKeypoints(gray,kp)
 
-cv2.imwrite('sift_keypoints.jpg',img)
+cv2.imwrite('surf_keypoints.jpg',img)
 
 

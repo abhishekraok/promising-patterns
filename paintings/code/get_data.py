@@ -174,30 +174,70 @@ def unpickle_cifar(file):
     fo.close()
     return dict
 
-def visualize_paintings(fn):
+def visualize_paintings(fn,size_h=64, size_w=64, colors=3):
     """ Function to visualize the saved numpy data file.
 
     :type fn: string
     :param fn: the numpy file to laod, expected to have ncols*nrows where
                the columns correspond to the samples and rows are features +
                label
+    :size_h: height of image, default 64
+    :size_w: width of image, default 64
+    :colors: 3 for rbg, 1 for greyscale
     """
     all_data = numpy.loadtxt(fn,delimiter=',',dtype=numpy.uint8)
     some_data = all_data[:9] # take only some of them to visualize
     X = some_data[:,:-1]
     y = some_data[:,-1]
-    some_data_rs = [i.reshape(64,64,3) for i in X]
+    if colors == 1:
+        some_data_rs = [i.reshape(size_h,size_w) for i in X]
+    else:
+        some_data_rs = [i.reshape(size_h,size_w,colors) for i in X]
     import matplotlib.pyplot as plt
     for i in range(len(X)):
         plt.subplot(3,3,i)
-        plt.imshow(some_data_rs[i],interpolation='None')
+        if colors == 1:
+            import matplotlib.cm as cm
+            plt.imshow(some_data_rs[i],interpolation='None',cmap = cm.Greys_r)
+        else:
+            plt.imshow(some_data_rs[i],interpolation='None')
         plt.colorbar()
         plt.title(str(y[i]))
     plt.show()
 
+def convert_to_grayscale(numpy_file,size_h, size_w):
+    """Given a numpy file, converts it into numpy image matrix file.
+
+    :numpy_file: name of input numpy file.
+    :size_h: height of image
+    :size_w: width of image
+    """
+    gray_file = numpy_file[:-4] + '_grey.csv'
+    all_data = numpy.loadtxt(numpy_file,delimiter=',',dtype=numpy.uint8)
+    X = all_data[:,:-1]
+    X_bw = []
+    y =all_data[:,-1]
+    for i in X:
+        rgb = i.reshape(size_h, size_w, 3)
+        gray = rgb2gray(rgb)
+        X_bw.append(gray.flatten())
+    Xandy = numpy.hstack((X_bw,y.reshape(-1,1)))
+    numpy.savetxt(gray_file,Xandy,fmt='%d',delimiter=',')
+    print 'Converted ', numpy_file, ' to greyscale'
+
+
+def rgb2gray(rgb):
+    """Given integeger array rgb (colors) converts it into greyscale"""
+    r, g, b = rgb[:,:,0], rgb[:,:,1], rgb[:,:,2]
+    gray = 0.2989 * r + 0.5870 * g + 0.1140 * b
+    return gray
 
 if __name__ == '__main__':
     root_path='../data/Paintings/two_class/'
-    get_all_styles(root_path)
-    images_to_numpy(root_path)
-    visualize_paintings(root_path+ 'Paintings_test.csv')
+    #get_all_styles(root_path)
+    #images_to_numpy(root_path)
+    #visualize_paintings(root_path+ 'Paintings_test.csv')
+    convert_to_grayscale(root_path+ 'big/Paintings_train.csv',64,64)
+    convert_to_grayscale(root_path+ 'big/Paintings_test.csv',64,64)
+    visualize_paintings(root_path+ 'big/Paintings_test_grey.csv',64,64,1)
+

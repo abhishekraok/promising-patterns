@@ -47,8 +47,7 @@ def test_sda(
     Returns tuple of best validataion loss and test score
     """
     # Change here
-    datasets = load_data('../data/Paintings/two_class/Paintings_train.csv',
-                        '../data/Paintings/two_class/Paintings_test.csv')
+    datasets = load_data(train_file_name, test_file_name)
     # End of change
     train_set_x, train_set_y = datasets[0]
     valid_set_x, valid_set_y = datasets[1]

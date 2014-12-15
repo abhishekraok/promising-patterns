@@ -181,6 +181,7 @@ def load_data(dataset):
     #numpy.ndarray of 1 dimensions (vector)) that have the same length as
     #the number of rows in the input. It should give the target
     #target to the example with the same index in the input.
+    import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
 
     def shared_dataset(data_xy, borrow=True):
         """ Function that loads the dataset into shared variables
