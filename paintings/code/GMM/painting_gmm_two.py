@@ -13,7 +13,7 @@ from sklearn.metrics import accuracy_score, classification_report
 # TODO Change this while testing increase
 GMM_COMPONENTS = 50 # Number of GMM components in Mixture modeling.
 GMM_CONVERGENCE_THRESHOLD = 0.1 # GMM convergence, when to stop fitting
-MAX_IMAGE_PER_CLASS = 100 # Maximum images to read per class, limits
+MAX_IMAGE_PER_CLASS = 10 # Maximum images to read per class, limits
 # too big data set from being read
 
 ############ Classes ###################
@@ -84,8 +84,7 @@ def full_image_vis(image):
     plt.show()
 
 
-############## Main ##########################
-
+############## Main ###########################################
 data_dir = 'C:/Users/akr156/Pictures/two_class_full_size/'
 genres = ['realism', 'color-field-painting']
 c_image_collection = [] # This will hold all the image models
@@ -103,13 +102,14 @@ print 'Finding best model order by bic'
 X = c_image_collection[0] # Pick the first one,
 #better would be to average across
 orders = [5,10,20,50,100]
-bic_scores = [(X.fit(order=i)).gmm_model.bic(X) for i in orders]
-print 'The bic scores are ', bic_scores
+reshaped_X = np.vstack([X.image[:,:,i].ravel()
+                            for i in range(3)]).T
+bic_scores = [(X.fit(order=i)).gmm_model.bic(reshaped_X) for i in orders]
+print 'The bic scores are ', bic_scores, ' best is ', \
+    orders[orders.index(max(bic_scores))]
+GMM_COMPONENTS = orders[orders.index(max(bic_scores))]
 
-
-
-
-
+############# Data preparation ################################
 train_set, test_set = train_test_split(c_image_collection)
 train_set = list(train_set)
 test_set = list(test_set)

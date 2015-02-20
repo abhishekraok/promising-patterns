@@ -10,7 +10,7 @@ The general algorithm is as follows:
 2. For each style create a folder
 3. Crawl that style and get list of links for images
 4. For each link
-5. Download the links using urllib and convert to PIL image, resize
+5. Download the links using urllib and convert to PIL image, resize (optional)
    and write to JPG file.
 6. For each image convert to numpy array and append the folder index to create
    a matrix where the rows are samples, columns = features + label,
@@ -81,7 +81,7 @@ def get_style(style='abstract-art',
     domain = "http://www.wikiart.org"
     current_link = domain + "/en/paintings-by-style/" + style
     ths =crawl_style(current_link)
-    new_size = (64,64)
+    #new_size = (64,64)
     directory = root_path + style
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -90,7 +90,8 @@ def get_style(style='abstract-art',
         if im is None:
             continue
         file_name = (re.sub(u"[\\\\,\:,\/]", '_', urllib.url2pathname(i)))[31:]
-        im.resize(new_size).save(directory + '/' + file_name)
+        # Optional resize im.resize(new_size)
+        im.save(directory + '/' + file_name)
     print 'Saved ', len(ths), ' files into dir:', style
 
 def get_all_styles(root_path='../Data/Paintings/'):
@@ -101,12 +102,12 @@ def get_all_styles(root_path='../Data/Paintings/'):
     if not os.path.exists(root_path):
         os.makedirs(root_path)
     print ' Getting many styles of paintings from internet... '
-    styles = [#'color-field-painting',
-            'realism',
-            #'impressionism',
-            'expressionism',
-            #'surrealism',
-            #'abstract-art'
+    styles = ['color-field-painting',
+            #'realism',
+            'impressionism',
+            #'expressionism',
+            'surrealism',
+            'abstract-art'
               ]
     for particular_style in styles:
         get_style(particular_style, root_path)
@@ -233,11 +234,11 @@ def rgb2gray(rgb):
     return gray
 
 if __name__ == '__main__':
-    root_path='../data/Paintings/two_class/'
-    #get_all_styles(root_path)
+    root_path='../data/two_class_full_size/'
+    get_all_styles(root_path)
     #images_to_numpy(root_path)
     #visualize_paintings(root_path+ 'Paintings_test.csv')
-    convert_to_grayscale(root_path+ 'big/Paintings_train.csv',64,64)
-    convert_to_grayscale(root_path+ 'big/Paintings_test.csv',64,64)
-    visualize_paintings(root_path+ 'big/Paintings_test_grey.csv',64,64,1)
+    #convert_to_grayscale(root_path+ 'big/Paintings_train.csv',64,64)
+    #convert_to_grayscale(root_path+ 'big/Paintings_test.csv',64,64)
+    #visualize_paintings(root_path+ 'big/Paintings_test_grey.csv',64,64,1)
 
