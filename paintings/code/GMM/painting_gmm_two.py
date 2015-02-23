@@ -11,9 +11,9 @@ from sklearn.metrics import accuracy_score, classification_report
 
 ############ Constants ################
 # TODO Change this while testing increase
-GMM_COMPONENTS = 50 # Number of GMM components in Mixture modeling.
+GMM_COMPONENTS = 10 # Number of GMM components in Mixture modeling.
 GMM_CONVERGENCE_THRESHOLD = 0.1 # GMM convergence, when to stop fitting
-MAX_IMAGE_PER_CLASS = 10 # Maximum images to read per class, limits
+MAX_IMAGE_PER_CLASS = 1000 # Maximum images to read per class, limits
 # too big data set from being read
 
 ############ Classes ###################
@@ -83,10 +83,63 @@ def full_image_vis(image):
     plt.title('The GMM means of the RGB scatter plot')
     plt.show()
 
+def model_order_selction(X):
+    """
+    Given an gmm_image X, reshape it and fit a GMM for it, check it's bic. Pick
+    the highest. Return integer.
 
+    Arguments:
+        X: object of class gmm_image
+
+    Return:
+        Integer, highest bic score order
+    """
+    print 'Finding best model order by bic'
+    orders = [2,3,4,5,8,10,20,50]
+    reshaped_X = np.vstack([X.image[:,:,i].ravel()
+                                for i in range(3)]).T
+    bic_scores = [(X.fit(order=i)).gmm_model.bic(reshaped_X) for i in orders]
+    best_order = orders[bic_scores.index(max(bic_scores))]
+    print 'The bic scores are ', bic_scores, ' best is ', best_order
+    plt.plot(orders,bic_scores)
+    plt.title('BIC scores vs order')
+    plt.xlabel('Number of components in GMM')
+    plt.ylabel('BIC score')
+    plt.show()
+    return best_order
+
+def prepare_data(data_set):
+    """ Given a dataset (list) split it into train and test, display stats.
+
+    Arguements:
+        data_set: list
+
+    Returns:
+        train_set, test_set
+        """
+
+    train_set, test_set = train_test_split(data_set)
+    train_set = list(train_set)
+    test_set = list(test_set)
+    N = len(c_image_collection)
+    print 'Images read from ', data_dir, ' Total of ', N, ' images read'
+    print 'We have ', len(train_set), ' training samples and ', len(test_set), \
+        'test samples'
+    print ' In training set'
+    training_labels = [i.label for i in train_set]
+    labels = set(training_labels)
+    for i in labels:
+        print 'There are ', training_labels.count(i), ' training images in', \
+            ' class ', i, ' class name ', genres[i]
+    testing_labels = [i.label for i in test_set]
+    labels = set(testing_labels)
+    for i in labels:
+        print 'There are ', testing_labels.count(i), ' testing images in', \
+            ' class ', i, ' class name ', genres[i]
+    return train_set, test_set
 ############## Main ###########################################
 data_dir = 'C:/Users/akr156/Pictures/two_class_full_size/'
-genres = ['realism', 'color-field-painting']
+genres = ['color-field-painting','realism']
 c_image_collection = [] # This will hold all the image models
 for genre_i in genres:
     image_collection = io.ImageCollection(data_dir + genre_i + '/*.jpg')
@@ -97,26 +150,13 @@ for genre_i in genres:
         curr_gmm_image.label = genres.index(genre_i)
         c_image_collection.append(curr_gmm_image)
 
-######### Model order selection ############################
-print 'Finding best model order by bic'
-X = c_image_collection[0] # Pick the first one,
+#X = c_image_collection[6] # Pick the first one for finding model order selction.
 #better would be to average across
-orders = [5,10,20,50,100]
-reshaped_X = np.vstack([X.image[:,:,i].ravel()
-                            for i in range(3)]).T
-bic_scores = [(X.fit(order=i)).gmm_model.bic(reshaped_X) for i in orders]
-print 'The bic scores are ', bic_scores, ' best is ', \
-    orders[orders.index(max(bic_scores))]
-GMM_COMPONENTS = orders[orders.index(max(bic_scores))]
+#GMM_COMPONENTS = model_order_selction(X)
 
 ############# Data preparation ################################
-train_set, test_set = train_test_split(c_image_collection)
-train_set = list(train_set)
-test_set = list(test_set)
-N = len(c_image_collection)
-print 'Images read from ', data_dir, ' Total of ', N, ' images read'
-print 'We have ', len(train_set), ' training samples and ', len(test_set), \
-    'test samples'
+
+train_set, test_set = prepare_data(c_image_collection)
 
 # Training
 print 'Training started'
