@@ -8,14 +8,16 @@ import matplotlib.pyplot as plt
 from sklearn.cross_validation import train_test_split
 from sklearn import cross_validation
 from sklearn.metrics import accuracy_score, classification_report
-
+import cPickle
+import os
+import uuid
 ############ Constants ################
 # TODO Change this while testing increase
 GMM_COMPONENTS = 10 # Number of GMM components in Mixture modeling.
 GMM_CONVERGENCE_THRESHOLD = 0.1 # GMM convergence, when to stop fitting
-MAX_IMAGE_PER_CLASS = 1000 # Maximum images to read per class, limits
+MAX_IMAGE_PER_CLASS = 10 # Maximum images to read per class, limits
 # too big data set from being read
-
+UNIQUE_RUN_NAME = str(uuid.uuid4())
 ############ Classes ###################
 class gmm_image():
     """Class where objects have image, label and GMM"""
@@ -130,24 +132,29 @@ def prepare_data(data_set):
     labels = set(training_labels)
     for i in labels:
         print 'There are ', training_labels.count(i), ' training images in', \
-            ' class ', i, ' class name ', genres[i]
+            ' class ', i, ' class name ', classes[i]
     testing_labels = [i.label for i in test_set]
     labels = set(testing_labels)
     for i in labels:
         print 'There are ', testing_labels.count(i), ' testing images in', \
-            ' class ', i, ' class name ', genres[i]
+            ' class ', i, ' class name ', classes[i]
     return train_set, test_set
 ############## Main ###########################################
-data_dir = 'C:/Users/akr156/Pictures/two_class_full_size/'
-genres = ['color-field-painting','realism']
+print ' Started Image classification using GMM'
+print ' unique run string is ', UNIQUE_RUN_NAME
+#data_dir = '../../data/two_class_full_size/'
+data_dir = '../../data/caltech_small/'
+classes = [ i for i in os.listdir(data_dir) if os.path.isdir(data_dir+i)]
+print 'Getting data from ', os.path.abspath(data_dir)
+print ' The classes are ', classes
 c_image_collection = [] # This will hold all the image models
-for genre_i in genres:
+for genre_i in classes:
     image_collection = io.ImageCollection(data_dir + genre_i + '/*.jpg')
     image_collection = image_collection[:MAX_IMAGE_PER_CLASS] # limiter
     for image_i in image_collection:
         curr_gmm_image = gmm_image(image_i)
         # set the label for current image
-        curr_gmm_image.label = genres.index(genre_i)
+        curr_gmm_image.label = classes.index(genre_i)
         c_image_collection.append(curr_gmm_image)
 
 #X = c_image_collection[6] # Pick the first one for finding model order selction.
@@ -178,4 +185,5 @@ true_labels = [i.label for i in test_set]
 predicted_labels = [i.predicted_label for i in test_set]
 print 'The Classification report is '
 print classification_report(true_labels, predicted_labels)
-
+# Save the trained GMM
+#pickle.dump(train_set, open("train_set"+UNIQUE_RUN_NAME+ ".p","wb"))

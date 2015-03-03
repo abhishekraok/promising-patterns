@@ -6,6 +6,8 @@ Author: Abhishek Rao
 import numpy
 import theano
 import theano.tensor as T
+from time import sleep
+import sys
 
 def unpickle_cifar(file):
     import cPickle
@@ -190,5 +192,26 @@ def numpy_to_pkl_theano(train_filename, test_filename,
     print 'File ', pkl_filename, ' created'
     return pkl_filename
 
+def progressb(list_item, action):
+    """Given a list of items and an action to perform on each, displays
+    progress bar till done.
+
+    Arguments:
+        list_item: Any list
+        action: action to perform on each list item
+
+    """
+    N = len(list_item)
+    count = 0
+    ratio_complete = 0.0
+    for single_item in list_item:
+        single_item.action()
+        sys.stdout.write('\r')
+        # the exact output you're looking for:
+        max20 = int(ratio_complete*20)
+        sys.stdout.write("[%-20s] %d%%" % ('='*max20, 5*max20))
+        sys.stdout.flush()
+        count += 1
+        ratio_complete = count/N
 
 
