@@ -25,8 +25,8 @@ from time import sleep
 # TODO Change this while testing increase
 GMM_COMPONENTS = 32  # Number of GMM components in Mixture modeling.
 GMM_CONVERGENCE_THRESHOLD = 0.01  # GMM convergence, when to stop fitting
-MAX_IMAGE_PER_CLASS = 10  # Maximum images to read per class, limits
-# too big data set from being read
+MAX_TRAIN_SIZE = 400  # Maximum images for training, testing time is O(N^2) of
+# this
 UNIQUE_RUN_NAME = str(uuid.uuid4())
 
 
@@ -171,7 +171,7 @@ def prepare_data(data_set):
         train_set, test_set
         """
 
-    train_set, test_set = train_test_split(data_set)
+    train_set, test_set = train_test_split(data_set, train_size=MAX_TRAIN_SIZE)
     train_set = list(train_set)
     test_set = list(test_set)
     N = len(c_image_collection)
@@ -199,14 +199,13 @@ if __name__ == '__main__':
         GMM_COMPONENTS
     data_dir = '../../../data/two_class_full_size/'
     # data_dir = '../../../data/caltech_small/'
-    # classes = [i for i in os.listdir(data_dir) if os.path.isdir(data_dir + i)]
-    classes = ['color-field-painting', 'realism']
+    classes = [i for i in os.listdir(data_dir) if os.path.isdir(data_dir + i)]
+    # classes = ['color-field-painting', 'realism']
     print 'Getting data from ', os.path.abspath(data_dir)
     print 'The classes are ', classes
     c_image_collection = []  # This will hold all the image models
     for genre_i in classes:
         image_collection = io.ImageCollection(data_dir + genre_i + '/*.jpg')
-    #    image_collection = image_collection[:MAX_IMAGE_PER_CLASS]  # limiter
         for image_i in image_collection:
             curr_GmmImageSIFT = GmmImageSIFT(image_i)
             # set the label for current image
@@ -256,4 +255,5 @@ if __name__ == '__main__':
     print classification_report(true_labels, predicted_labels)
     # Save the trained GMM
     all_variables = dir()
-    cPickle.dump(all_variables, open("All_variables_" + UNIQUE_RUN_NAME + ".p", "wb"))
+    cPickle.dump(train_set, open("C:/Users/akr156/Pictures/GMM_SIFT/train_set" \
+                                 + UNIQUE_RUN_NAME + ".p", "wb"))
