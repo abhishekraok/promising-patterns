@@ -88,6 +88,22 @@ def get_sift_des(image):
         des = np.zeros((1,128))
     return des
 
+def get_dense_sift_des(image):
+    """ Given a RGB or grayscale image, returns a matrix where the rows are
+    sift descriptors and 128 columns are present."""
+    if len(image.shape) == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image
+    sift = cv2.SIFT()
+    dense=cv2.FeatureDetector_create("Dense")
+    kp=dense.detect(gray)
+    des=sift.compute(gray,kp)[1]
+    # some images are too simple, no descriptor will be found, so create a
+    # empty dummy descriptor to prevent it from being null
+    if des is None:
+        des = np.zeros((1,128))
+	return des
 
 def visualize3d(input3darray, color='b'):
     """Scatter plot 3d array"""
