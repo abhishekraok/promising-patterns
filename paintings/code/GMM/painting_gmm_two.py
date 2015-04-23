@@ -11,11 +11,13 @@ from sklearn.metrics import accuracy_score, classification_report
 import cPickle
 import os
 import uuid
+from sklearn.metrics import confusion_matrix
+
 ############ Constants ################
 # TODO Change this while testing increase
 GMM_COMPONENTS = 10 # Number of GMM components in Mixture modeling.
 GMM_CONVERGENCE_THRESHOLD = 0.1 # GMM convergence, when to stop fitting
-MAX_IMAGE_PER_CLASS = 10 # Maximum images to read per class, limits
+MAX_IMAGE_PER_CLASS = 100 # Maximum images to read per class, limits
 # too big data set from being read
 UNIQUE_RUN_NAME = str(uuid.uuid4())
 ############ Classes ###################
@@ -139,12 +141,26 @@ def prepare_data(data_set):
         print 'There are ', testing_labels.count(i), ' testing images in', \
             ' class ', i, ' class name ', classes[i]
     return train_set, test_set
+
+def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues,
+                          target_names=['class_1','class_2']):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(iris.target_names))
+    plt.xticks(tick_marks, target_names, rotation=45)
+    plt.yticks(tick_marks, target_names)
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
 ############## Main ###########################################
 print ' Started Image classification using GMM'
 print ' unique run string is ', UNIQUE_RUN_NAME
-#data_dir = '../../data/two_class_full_size/'
-data_dir = '../../data/caltech_small/'
-classes = [ i for i in os.listdir(data_dir) if os.path.isdir(data_dir+i)]
+data_dir = '../../data/two_class_full_size/'
+#data_dir = '../../data/caltech_small/'
+#classes = [ i for i in os.listdir(data_dir) if os.path.isdir(data_dir+i)]
+classes = ['color-field-painting','realism']
 print 'Getting data from ', os.path.abspath(data_dir)
 print ' The classes are ', classes
 c_image_collection = [] # This will hold all the image models
@@ -185,5 +201,6 @@ true_labels = [i.label for i in test_set]
 predicted_labels = [i.predicted_label for i in test_set]
 print 'The Classification report is '
 print classification_report(true_labels, predicted_labels)
+
 # Save the trained GMM
 #pickle.dump(train_set, open("train_set"+UNIQUE_RUN_NAME+ ".p","wb"))
