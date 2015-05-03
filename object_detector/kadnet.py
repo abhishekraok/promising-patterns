@@ -2,19 +2,34 @@ nc_labels = []  # a list of string, where each string is a label of new class no
 nc_list = []  # a list of NewClass nodes
 top_N  = 5  # number of features to select for each new class
 
-class NewClass():
+class KadNet():
+   """The main class containing all the KadNodes.""" 
+   def __init__(self, labels_list=['Default1','Default2','Default3']):
+       self.labels_list = labels_list
+       self.nodes = [Kadnode(label=i) for i in self.labels_list]
+
+    def check_outputs(self):
+        """ Displays pairwise node output values and their corresponding output
+        values"""
+        print 'Displaying all the activation values'
+        for i in self.nodes:
+            print 'Label = ', i.label, ': Output = ', i.output
+
+
+class Kadnode():
     """ A new class, a new label created from function of old"""
     def __init__(self, label=None, output=None):
         self.label = label if not label is None else None
         self.output= output if not output is None else None
-        inputs = []
-        weights = []
+        self.inputs = []
+        self.weights = []
         
     def get_activation(self):
         if self.output is not None:
             return self.output
         else:
-            output = sum((get_activation_by_label(inputs[i]) * weights[i] for i in range(len(inputs))])
+            output = sum([get_activation_by_label(self.inputs[i]) *
+                self.weights[i] for i in range(len(self.inputs))])
 
 def activate_all(in_net, filename, new_classes):
     """ Activate all the nodes for given file with name
@@ -45,7 +60,9 @@ def get_activation_by_label(node_label):
         nc_node = nc_list[nc_labels.index(node_label)]
         return nc_node.get_activation()
     
-    
+if __name__ == '__main__':
+    main_list = KadNet()
+    main_list.check
 
 
 
