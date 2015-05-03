@@ -49,7 +49,7 @@ class GmmImageSIFT():
     def fit(self, order=None):
         """create and fit GMM to self.
         Find SIFT descriptor for current image, fit that into GMM"""
-        self.sift_des = get_sift_des(self.image)
+        self.sift_des = get_dense_sift_des(self.image)
         order_used = GMM_COMPONENTS if order is None else order
         self.gmm_model = mixture.GMM(n_components=order_used,
                                      thresh=GMM_CONVERGENCE_THRESHOLD)
@@ -68,7 +68,7 @@ class GmmImageSIFT():
         Returns:
             the fit score of current model with input X image
         """
-        sift_des = get_sift_des(x.image)
+        sift_des = get_dense_sift_des(x.image)
         return sum(self.gmm_model.score(sift_des))
 
 
@@ -158,7 +158,7 @@ def model_order_selection(input_train_set):
     set_to_use = input_train_set[:total_selection]  # choose few
     image_bic_scores = []
     for X in set_to_use:
-        x_sif_des = get_sift_des(X.image)
+        x_sif_des = get_dense_sift_des(X.image)
         # Check to make sure the number of descriptors, i.e. rows > order
         bic_scores_orderwise = [(X.fit(order=i)).gmm_model.bic(x_sif_des)
                                 for i in orders if x_sif_des.shape[0] > i]

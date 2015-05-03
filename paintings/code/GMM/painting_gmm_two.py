@@ -17,7 +17,8 @@ from sklearn.metrics import confusion_matrix
 # TODO Change this while testing increase
 GMM_COMPONENTS = 10 # Number of GMM components in Mixture modeling.
 GMM_CONVERGENCE_THRESHOLD = 0.1 # GMM convergence, when to stop fitting
-MAX_IMAGE_PER_CLASS = 100 # Maximum images to read per class, limits
+MAX_IMAGE_PER_CLASS = 100
+ # Maximum images to read per class, limits
 # too big data set from being read
 UNIQUE_RUN_NAME = str(uuid.uuid4())
 ############ Classes ###################
