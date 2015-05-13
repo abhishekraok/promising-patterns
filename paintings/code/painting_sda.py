@@ -12,8 +12,8 @@ dname = os.path.dirname(abspath)
 os.chdir(dname)
 
 def test_sda(
-        train_file_name ='../data/Paintings/two_class/Paintings_train.csv',
-        test_file_name ='../data/Paintings/two_class/Paintings_test.csv',
+        train_file_name ='../data/five_class_full/Paintings_train.csv',
+        test_file_name ='../data/five_class_full/Paintings_test.csv',
         finetune_lr=0.1,
         pretraining_epochs=15,
         pretrain_lr=0.001,
@@ -49,16 +49,17 @@ def test_sda(
     # Change here
     datasets = load_data(train_file_name, test_file_name)
     # End of change
-    train_set_x, train_set_y = datasets[0]
+    train_set_x, train_set_y = datasets[0] # TODO remove this second limiter
     valid_set_x, valid_set_y = datasets[1]
     test_set_x, test_set_y = datasets[2]
+    import ipdb; ipdb.set_trace()
 
     # compute number of minibatches for training, validation and testing
     n_train_batches = train_set_x.get_value(borrow=True).shape[0]
     n_train_batches /= batch_size
 
     n_ins = train_set_x.get_value(borrow=True).shape[1]
-    n_outs = 2
+    n_outs = 5
     # numpy random generator
     numpy_rng = numpy.random.RandomState(89677)
     print '... building the model'
@@ -183,6 +184,8 @@ def test_sda(
     test_x_pyvar = test_set_x.get_value()
     print 'The precision is ', sda.precision(test_x_pyvar, test_y_pyvar)
     print 'The recall is ', sda.recall(test_x_pyvar, test_y_pyvar)
+    clr = sda.classification_report(test_x_pyvar, test_y_pyvar)
+    print 'The classification report is ', clr
     # End
     return sda
 

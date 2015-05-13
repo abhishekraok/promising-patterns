@@ -9,8 +9,7 @@ Subclass SdA2 created out of SdA
 import numpy
 import theano
 import SdA
-from sklearn.metrics import precision_score, recall_score
-
+from sklearn.metrics import precision_score, recall_score, classification_report
 
 class SdA2(SdA.SdA):
     """Stacked denoising auto-encoder class (SdA) with exras like predict.
@@ -49,7 +48,7 @@ class SdA2(SdA.SdA):
     def predict(self,X):
         """ Predict new value based on the parameters"""
         predict_func = theano.function(inputs=[self.x],
-                outputs=self.logLayer.y_pred)
+		       outputs=self.logLayer.y_pred)
                 #outputs=self.logLayer.y_pred,givens={x:X})
         return predict_func(X)
 
@@ -67,6 +66,12 @@ class SdA2(SdA.SdA):
         y_pred = self.predict(X)
         return recall_score(y, y_pred)
 
+    def classification_report(self,X,y):
+        """ Given input X and y, gives out the classification report."""
+        y_pred = self.predict(X)
+        clfr = classification_report(y, y_pred)
+	return clfr
+
 if __name__ == '__main__':
     # numpy random generator
     numpy_rng = numpy.random.RandomState(89677)
@@ -79,7 +84,7 @@ if __name__ == '__main__':
     # prediction before training
     yp1 = sda.predict(X)
     y = [0, 1, 1]
-    print sda.precision(X,y)
+    print sda.classification_report(X,y)
     # training the classifier
     #SdA.test_SdA(classifier=sda,training_epochs=10)
     #yp2 = sda.predict(sda.x, X)
