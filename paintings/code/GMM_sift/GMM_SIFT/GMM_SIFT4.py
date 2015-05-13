@@ -7,17 +7,12 @@ __author__ = 'Abhishek Rao'
 import numpy as np
 from sklearn import mixture
 from glob import glob
-import os
-print os.getcwd() # Just checking current directory
-print 'File exists', os.path.isfile('../code/GMM_sift/GMM_SIFT/GMM_SIFT.py')
-import sys
-sys.path.append('../code/GMM_sift/GMM_SIFT/')
 import cv2
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics import average_precision_score, classification_report
 
 # Constants
-NUM_COMPONENT = 128  # number of components in GMM
+NUM_COMPONENT = 32  # default number of components in GMM
 
 # Functions
 def extract_dense_SIFT_feat(filename):
@@ -35,7 +30,7 @@ def extract_dense_SIFT_feat(filename):
 def train(train_files,train_labels):
     """Train on given dataset"""
     # Start training
-    print 'Training started'
+    print 'Training started. Number of train images = ',len(train_labels)
     number_of_classes = len(set(train_labels))
     train_features = []
     for image_i in train_files:
@@ -45,6 +40,7 @@ def train(train_files,train_labels):
     for i,label_i in enumerate(train_labels):
         X_train[label_i] = np.vstack([X_train[label_i],train_features[i]])
     # Create a GMM for each class
+    print 'Feature Extraaction complete. Now fitting GMM'
     Mixture_list = [] # Empty list of mixture
     for class_i in X_train:
         mixture_model = mixture.GMM(n_components=NUM_COMPONENT)
@@ -60,7 +56,7 @@ def predict(mixtures_list, test_files):
     mixtures_list : List of gmm
     test_files: list of image file paths for testing.
     """
-    print 'Prediction Started'
+    print 'Prediction Started. Number of test images = ',len(test_files)
     y_pred = [] # The to be returned predicted results
     for test_i in test_files:
         test_feat = extract_dense_SIFT_feat(test_i)
@@ -89,6 +85,7 @@ def get_all_jpgs_list(data_dir,subdirectories,maxlen):
 
 def SIFT_experiment(data_dir, classes=['color-field-painting', 'expressionism'], maxlen=None):
     """Given classes perform SIFT feature image classification experiment"""
+    print 'Number of GMM components = ',NUM_COMPONENT
     # Get all files list
     jpg_files_list, labels_list = get_all_jpgs_list(data_dir,classes,maxlen)
     # Split into train and test set
@@ -101,6 +98,5 @@ def SIFT_experiment(data_dir, classes=['color-field-painting', 'expressionism'],
         print 'Average precision = ', average_precision_score(test_labels, y_pred)
     print(classification_report(test_labels, y_pred, target_names=classes))
 
-
-data_dir = '../data/two_class_full_size/'
-clf = SIFT_experiment(data_dir,maxlen=100)
+data_dir = '../../../data/two_class_full_size/'
+clf = SIFT_experiment(data_dir,maxlen=20)
