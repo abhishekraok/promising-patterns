@@ -62,6 +62,7 @@ target/
 *.exe
 *.swp
 *.py~
+*.pkl
 
 #Misc
 *.PBS*
