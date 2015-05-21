@@ -12,6 +12,7 @@ Update. 21 May 2015: Split into files, created School.py
     Variable width output for classifier.
     Assign any function to a classifier node.
 input width is fixed.
+# TODO Need a better predictor.
 """
 
 __author__ = 'Abhishek Rao'
@@ -49,23 +50,23 @@ class ClassifierNode:
             self.classifier = svm.LinearSVC(dual=False, penalty='l1')
             self.classifier_type = 'standard'
 
-    def fit(self, X, y):
-        new_x = X[:, :self.end_in_address]
-        self.classifier.fit(new_x, y)
+    def fit(self, x_in, y):
+        new_x_in = x_in[:, :self.end_in_address]
+        self.classifier.fit(new_x_in, y)
 
-    def predict(self, X):
+    def predict(self, x_in):
         """
         Give output for the current classifier. Note instead of predict 1,0, better to use probability, soft prediction.
-        :param X: The Classifier banks working memory, full matrix.
+        :param x_in: The Classifier banks working memory, full matrix_in.
         :return: A column of predicted values.
         """
-        new_x = X[:, :self.end_in_address]
+        new_x_in = x_in[:, :self.end_in_address]
         if self.classifier_type == 'standard':
-            dec_fx = self.classifier.decision_function(new_x)
+            dec_fx_in = self.classifier.decision_function(new_x_in)
         else:
-            dec_fx = self.given_predictor(new_x)
+            dec_fx_in = self.given_predictor(new_x_in)
         # Convert it into mapping between 0 to 1 instead of -1 to 1
-        return np.array([sigmoid_10(i) for i in dec_fx])
+        return np.array([sigmoid_10(i) for i in dec_fx_in])
 
 
 class SimpleClassifierBank:
@@ -88,17 +89,17 @@ class SimpleClassifierBank:
         self.classifiers_current_count = 0  # starting address for output for new classifier
         self.classifiers_list = []
 
-    def predict(self, X):
-        """Give out what it thinks from the input. Input X should be 2 dimensional.
+    def predict(self, x_pred):
+        """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
 
-        :param: X: input, dimension 2, (samples x dimension)"""
+        :param: x_pred: input, dimension 2, (samples x_pred dimension)"""
         self.current_working_memory *= 0  # Flush the current input
-        X = np.array(X)
-        input_number_samples, input_feature_dimension = X.shape
-        if len(X.shape) is not 2:
+        x_pred = np.array(x_pred)
+        input_number_samples, input_feature_dimension = x_pred.shape
+        if len(x_pred.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
-        self.current_working_memory[:input_number_samples, :input_feature_dimension] = X
+        self.current_working_memory[:input_number_samples, :input_feature_dimension] = x_pred
         for classifier_i in self.classifiers_list:
             predicted_value = classifier_i.predict(self.current_working_memory)
             predicted_shape = predicted_value.shape
@@ -207,8 +208,8 @@ class SimpleClassifierBank:
         :param y: actual label
         :return: float, between 0 to 1
         """
-        yp = self.predict(x_in)
-        return accuracy_score(y, y_pred=yp)
+        yp_score = self.predict(x_in)
+        return accuracy_score(y, y_pred=yp_score)
 
     def generic_task(self, x_in, y, task_name):
         """
@@ -223,25 +224,31 @@ class SimpleClassifierBank:
 def sigmoid_10(x):
     return 1 / (1 + math.exp(-10*x))
 
+
 # Following are required for custom functions Task 1,2
 def meanie(x):
     return np.mean(x, axis=1)
+
 
 def dot_with_11(x):
     return np.dot(x, np.array([0.5, 0.5]))
 
 
 if __name__ == '__main__':
+    learning_phase = False
     classifier_file_name = 'ClassifierFile.pkl'
     if os.path.isfile(classifier_file_name):
         Main_C1 = pickle.load(open(classifier_file_name, 'r'))
     else:
         Main_C1 = SimpleClassifierBank(max_width=2000, input_width=1500, height=500)
-    # School.class_digital_logic(Main_C1)
+    # Learn or not learn?
+    if learning_phase:
+        School.class_digital_logic(Main_C1)
+        School.simple_custom_fitting_class(Main_C1)
     # Main_C1.fit_custom_fx(np.mean,input_width=1500, output_width=1, task_name='np.mean')
     yp = Main_C1.predict(np.random.randn(8, 22))
     print 'Predicted value is ', yp
     # Main_C1.remove_classifier('np.mean')
-    # School.simple_custom_fitting_class(Main_C1)
+
     Main_C1.status()
     pickle.dump(Main_C1, open(classifier_file_name, 'w'))
