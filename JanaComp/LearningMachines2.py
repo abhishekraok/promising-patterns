@@ -4,6 +4,9 @@ Let me try to solve a simpler problem first. Let me forget about the gate and do
 step by step, one bye one.
 
 Update. 19 May 2015. Let me stept this up. Instead of having a fixed width,
+
+Update. 21 May 2015: Split into files, created School.py
+
 #TODO: extending classifier
     let me keep expanding the width. Only the
     Variable width output for classifier.
@@ -22,15 +25,10 @@ import matplotlib.pyplot as plt
 import pickle
 import os.path
 from sklearn.metrics import accuracy_score
+import School
 
 
 # Constants
-
-
-# Global functions
-# Reason for having 10 sigmoid is to get sharper distinction.
-def sigmoid_10(x):
-    return 1 / (1 + math.exp(-10*x))
 
 
 # Classes
@@ -220,97 +218,17 @@ class SimpleClassifierBank:
         print 'The score for task ', task_name, ' is ', self.score(x_in, y)
 
 
-def task_and(classifier):
-    # Task 1 noisy and
-    noise_columns = np.random.randn(90, 3)
-    data_columns = np.array([[1, 0], [0, 1], [1, 1], [0, 0]] * 2 + [[0, 1]])
-    data_columns_big = np.vstack([data_columns] * 10)
-    X = np.hstack([data_columns_big, noise_columns])  # total data
-    print X
-    y = np.array([[0, 0, 1, 0] * 2 + [0]])
-    y_big = np.hstack([y] * 10).flatten()
-    classifier.fit(X, y_big, task_name='Noisy and long')
-    yp = classifier.predict(X)
-    print 'Predicted value is '
-    print yp
-    print 'Score for task Noisy and long is ', classifier.score(X, y_big)
+# Global functions
+# Reason for having 10 sigmoid is to get sharper distinction.
+def sigmoid_10(x):
+    return 1 / (1 + math.exp(-10*x))
 
-
-def task_XOR_problem(classifier):
-    """
-    Trains the classifier in the art of XOR problem
-    :param classifier: any general classifier.
-    :return: None
-    """
-    X = np.array([[1, 0],
-                  [0, 1],
-                  [1, 1],
-                  [0, 0]] * 50)
-    y = np.array([1, 1, 0, 0] * 50)
-    classifier.fit(X, y, task_name='XOR task')
-    yp = classifier.predict(X)
-    print 'Predicted value is '
-    print yp
-    print 'Score for XOR problem is ', classifier.score(X, y)
-
-
-def task_OR_problem(classifier):
-    """
-    Trains the classifier in the art of XOR problem
-    :param classifier: any general classifier.
-    :return: None
-    """
-    X = np.array([
-                     [1, 0],
-                     [0, 1],
-                     [1, 1],
-                     [0, 0]] * 50)
-    y = np.array([1, 1, 1, 0] * 50)
-    classifier.fit(X, y, task_name='OR task')
-    yp = classifier.predict(X)
-    print 'Predicted value is '
-    print yp
-    print 'Score for OR problem is ', classifier.score(X, y)
-
-
-# Error can't do this, as this is multi class. Later will add support
-def scikit_learn_dataset_training(classifier):
-    from sklearn import datasets
-
-    iris = datasets.load_iris()
-    classifier.generic_task(iris.data, iris.target, 'Iris')
-
-
-def class_digital_logic(classifier):
-    """
-    Trains in the art of 2 input, OR, and, xor.
-    :param classifier:
-    :return:
-    """
-    task_and(classifier)
-    task_OR_problem(classifier)
-    task_XOR_problem(classifier)
-
-
-# Task 1,2
+# Following are required for custom functions Task 1,2
 def meanie(x):
     return np.mean(x, axis=1)
 
-
 def dot_with_11(x):
     return np.dot(x, np.array([0.5, 0.5]))
-
-
-def simple_custom_fitting_class(classifier):
-    """
-    Fit with some simple custom functions.
-    :param classifier: object SimpleClassifierBank
-    :return:
-    """
-    # Lesson 1 11
-    classifier.fit_custom_fx(dot_with_11, 2, 1, 'dot with [1,1]')
-    # Lesson 2: Mean
-    classifier.fit_custom_fx(meanie, 1500, 1, 'np.mean')
 
 
 if __name__ == '__main__':
@@ -319,11 +237,11 @@ if __name__ == '__main__':
         Main_C1 = pickle.load(open(classifier_file_name, 'r'))
     else:
         Main_C1 = SimpleClassifierBank(max_width=2000, input_width=1500, height=500)
-    # class_digital_logic(Main_C1)
+    # School.class_digital_logic(Main_C1)
     # Main_C1.fit_custom_fx(np.mean,input_width=1500, output_width=1, task_name='np.mean')
     yp = Main_C1.predict(np.random.randn(8, 22))
     print 'Predicted value is ', yp
     # Main_C1.remove_classifier('np.mean')
-    # simple_custom_fitting_class(Main_C1)
+    # School.simple_custom_fitting_class(Main_C1)
     Main_C1.status()
     pickle.dump(Main_C1, open(classifier_file_name, 'w'))
