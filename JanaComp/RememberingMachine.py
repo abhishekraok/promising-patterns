@@ -5,9 +5,9 @@ This classifier uses a pre-trained CNN as the front end and uses those
 extracted features to form a persistent classifier that  remembers
 from all the past classification task.
 
-# TODO Extract caffe features.
-2. Use this as the input for remembering classifier.
 """
+
+# TODO  Use this as the input for remembering classifier.
 
 __author__ = 'Abhishek Rao'
 
@@ -37,6 +37,9 @@ caffe_root = '/home/student/ln_onedrive/code/promising-patterns/caffe/'  # this 
 
 sys.path.insert(0, caffe_root + 'python')
 import caffe
+import School
+
+
 # Constants
 
 
@@ -77,11 +80,11 @@ class ClassifierNode:
         return np.array([sigmoid_10(i) for i in dec_fx_in])
 
 
-class SimpleClassifierBank:
+class RememberingVisualMachine:
     """ A machine which stores both input X and the current output of bunch of classifiers.
     API should be similar to scikit learn"""
 
-    def __init__(self, max_width, input_width, height):
+    def __init__(self, max_width, input_width, height, front_end=None):
         """
         Initialize this class.
 
@@ -90,6 +93,8 @@ class SimpleClassifierBank:
             input_width.
         :param input_width: maximum input dimension.
         :param height: maximum number of input samples
+        :param front_end: a front end function that transforms the input to something else. e.g. a
+            pre trained CNN. Any feature extractor.
         :return: None
         """
         self.current_working_memory = np.zeros([height, max_width])
@@ -123,11 +128,11 @@ class SimpleClassifierBank:
         print 'Cant find any nonzero column'
         return self.current_working_memory[:, 0]
 
-    def fit(self, x_in, y, task_name='Default'):
+    def fit(self, input_file_list, y, object_label='Default'):
         """
         Adds a new classifier and trains it, similar to Scikit API
 
-        :param x_in: 2d Input data
+        :param input_file_list: Input image file
         :param y:  labels
         :return: None
         """
@@ -136,8 +141,10 @@ class SimpleClassifierBank:
                 > self.current_working_memory.shape[1]:
             print 'No more space for classifier. ERROR'
             raise MemoryError
-        x_in = np.array(x_in)
-        input_number_samples, input_feature_dimension = x_in.shape
+
+        x_in = np.vstack([extract_caffe_features(caffe_net, caffe_transformer, input_file)
+                          for input_file in input_file_list])
+        input_number_samples, input_feature_dimension =x_in.shape
         if len(x_in.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
@@ -147,7 +154,7 @@ class SimpleClassifierBank:
         new_classifier = ClassifierNode(
             end_in_address=self.classifiers_out_address_start + self.classifiers_current_count,
             out_address=[self.classifiers_out_address_start + self.classifiers_current_count + 1],
-            classifier_name=task_name)
+            classifier_name=object_label)
         self.classifiers_current_count += 1
         # Need to take care of mismatch in length of working memory and input samples.
         new_classifier.fit(self.current_working_memory[:input_number_samples], y)
@@ -224,7 +231,7 @@ class SimpleClassifierBank:
         """
         A generic framework to train on different tasks.
         """
-        self.fit(x_in, y, task_name=task_name)
+        self.fit(x_in, y, object_label=task_name)
         print 'The score for task ', task_name, ' is ', self.score(x_in, y)
 
 
@@ -287,27 +294,31 @@ if __name__ == '__main__':
     classifier_file_name = 'RememberingClassifier.pkl'
     cat_file = caffe_root + 'examples/images/cat.jpg'
     fish_file = caffe_root + 'examples/images/fish-bike.jpg'
-    if os.path.isfile(cat_file):
-        caffe_net, transformer = caffe_init()
-        cat_features = copy.copy(extract_caffe_features(caffe_net, transformer, cat_file))
-        fish_features = copy.copy(extract_caffe_features(caffe_net, transformer, fish_file))
-        print 'caffe features extracted.'
-        plt.plot(cat_features, '.')
-        plt.plot(fish_features, 'r.')
-        plt.plot
-        plt.show()
+    caffe_net, caffe_transformer = caffe_init()
+    # if os.path.isfile(cat_file):
+    #     cat_features = copy.copy(extract_caffe_features(caffe_net, transformer, cat_file))
+    #     fish_features = copy.copy(extract_caffe_features(caffe_net, transformer, fish_file))
+    #     print 'caffe features extracted.'
+    #     plt.plot(cat_features, '.')
+    #     plt.plot(fish_features, 'r.')
+    #     plt.plot
+    #     plt.show()
     if os.path.isfile(classifier_file_name):
         Main_C1 = pickle.load(open(classifier_file_name, 'r'))
     else:
-        Main_C1 = SimpleClassifierBank(max_width=8000, input_width=4096, height=1000)
+        Main_C1 = RememberingVisualMachine(max_width=8000, input_width=4096, height=1000)
+
+    small_file_list = [cat_file, fish_file]
+    y = [1,0]
+    # Main_C1.fit(small_file_list, y, 'cat')
     # Learn or not learn?
     # if learning_phase:
     #     School.class_digital_logic(Main_C1)
     #     School.simple_custom_fitting_class(Main_C1)
     # Main_C1.fit_custom_fx(np.mean,input_width=1500, output_width=1, task_name='np.mean')
-    yp = Main_C1.predict(np.random.randn(8, 22))
-    print 'Predicted value is ', yp
+    # yp = Main_C1.predict(np.random.randn(8, 22))
+    # print 'Predicted value is ', yp
     # Main_C1.remove_classifier('np.mean')
 
-    Main_C1.status()
+    Main_C1.status(show_graph=False)
     pickle.dump(Main_C1, open(classifier_file_name, 'w'))
