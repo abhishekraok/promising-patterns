@@ -8,6 +8,8 @@ from LearningMachines2 import meanie, dot_with_11
 from sklearn.cross_validation import train_test_split
 import os
 import glob
+from random import shuffle
+
 
 def task_and(classifier):
     # Task 1 noisy and
@@ -23,6 +25,7 @@ def task_and(classifier):
     print 'Predicted value is '
     print yp
     print 'Score for task Noisy and long is ', classifier.score(X, y_big)
+
 
 def task_XOR_problem(classifier):
     """
@@ -48,11 +51,10 @@ def task_OR_problem(classifier):
     :param classifier: any general classifier.
     :return: None
     """
-    X = np.array([
-                     [1, 0],
-                     [0, 1],
-                     [1, 1],
-                     [0, 0]] * 50)
+    X = np.array([[1, 0],
+                  [0, 1],
+                  [1, 1],
+                  [0, 0]] * 50)
     y = np.array([1, 1, 1, 0] * 50)
     classifier.fit(X, y, object_label='OR task')
     yp = classifier.predict(X)
@@ -80,8 +82,6 @@ def class_digital_logic(classifier):
     task_XOR_problem(classifier)
 
 
-
-
 def simple_custom_fitting_class(classifier):
     """
     Fit with some simple custom functions.
@@ -94,18 +94,58 @@ def simple_custom_fitting_class(classifier):
     classifier.fit_custom_fx(meanie, 1500, 1, 'np.mean')
 
 
-def caltech_101(classifier):
-    root='/home/student/Downloads/101_ObjectCategories'
+def caltech_101(classifier, negatives_samples_ratio=2):
+    print 'CalTech 101 dataset training started'
+    root = '/home/student/Downloads/101_ObjectCategories'
     categories = os.listdir(root)
-    all_images = []
-    for category_i in categories:
-        all_images += glob.glob(root + '/' + category_i + '/*.jpg')
-    from random import shuffle
-    shuffle(all_images)
-    elephant_list = glob.glob(root + '/' + categories[0] + '/*.jpg')
-    negatives_list = all_images[:len(elephant_list)]
-    x_total = elephant_list + negatives_list
-    y = [1]*len(elephant_list) + [0]*len(negatives_list)
-    x_train, x_test, y_train, y_test = train_test_split(x_total, y)
-    classifier.fit(x_train, y_train, 'elephants')
-    # TODO test this.
+    # TODO remove this, for debugging only
+    small_categories = categories[:3]
+    # Hold one out teaching. For each category, that category is positive, rest are negative.
+    for category_i in small_categories:
+        positive_list = glob.glob(root + '/' + category_i + '/*.jpg')
+        negatives_list = []
+        for other_category_i in categories:
+            if other_category_i != category_i:
+                negatives_list += glob.glob(root + '/' + other_category_i + '/*.jpg')
+        shuffle(negatives_list)
+        positive_samples_count = len(positive_list)
+        small_negative_list = negatives_list[:positive_samples_count * negatives_samples_ratio]
+        x_total = positive_list + small_negative_list
+        y = [1]*len(positive_list) + [0]*len(small_negative_list)
+        x_train, x_test, y_train, y_test = train_test_split(x_total, y)
+        classifier.fit(x_train, y_train, category_i)
+        score = classifier.score(x_test, y_test)
+        print 'Now I can see ', category_i, ' score is ', score
+
+def caltech_101_test(classifier):
+    """
+    A test to see how well CalTech 101 was learnt.
+
+    :param classifier:
+    :return: The mean F1 score.
+    """
+    print 'CalTech 101 dataset testing started'
+    root = '/home/student/Downloads/101_ObjectCategories'
+    categories = os.listdir(root)
+    # TODO remove this, for debugging only
+    small_categories = categories[:3]
+    # Hold one out teaching. For each category, that category is positive, rest are negative.
+    score_sheet = []  # Place to store all the scores.
+    for category_i in small_categories:
+        positive_list = glob.glob(root + '/' + category_i + '/*.jpg')
+        negatives_list = []
+        for other_category_i in categories:
+            if other_category_i != category_i:
+                negatives_list += glob.glob(root + '/' + other_category_i + '/*.jpg')
+        shuffle(negatives_list)
+        positive_samples_count = len(positive_list)
+        small_negative_list = negatives_list[:positive_samples_count *2]
+        x_total = positive_list + small_negative_list
+        y = [1]*len(positive_list) + [0]*len(small_negative_list)
+        x_train, x_test, y_train, y_test = train_test_split(x_total, y)
+        score = classifier.score(x_test, y_test)
+        print 'In the category ', category_i, ' score is ', score
+        score_sheet.append(score)
+    print 'The mean score among all the classes is ', np.mean(score_sheet)
+    return np.mean(score_sheet)
+
