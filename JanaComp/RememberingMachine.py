@@ -17,29 +17,16 @@ from sklearn import svm
 import math
 import matplotlib.pyplot as plt
 import pickle
-import os.path
 from sklearn.metrics import f1_score
-from sklearn.cross_validation import train_test_split
-from sklearn.svm import LinearSVC
-from sklearn.multiclass import OneVsRestClassifier
 import sys
 import os
-from glob import glob
-from sklearn.metrics import average_precision_score, classification_report
-import Image
 import copy
-from random import shuffle
-import copy
-
+import glob
 # Make sure that caffe is on the python path:
 caffe_root = '/home/student/ln_onedrive/code/promising-patterns/caffe/'  # this file is expected to be in {caffe_root}/examples
-
 sys.path.insert(0, caffe_root + 'python')
 import caffe
 import School
-
-
-# Constants
 
 
 # Classes
@@ -107,7 +94,7 @@ class RememberingVisualMachine:
         :param: predict_files_list: input files list, list of strings"""
         self.current_working_memory *= 0  # Flush the current input
         x_pred = np.vstack([copy.copy(extract_caffe_features(caffe_net, caffe_transformer, input_file))
-                          for input_file in predict_files_list])
+                            for input_file in predict_files_list])
         input_number_samples, input_feature_dimension = x_pred.shape
         if len(x_pred.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
@@ -123,8 +110,7 @@ class RememberingVisualMachine:
         # Prediction scheme. Return the column in the classifier range (not input range) column with
         # highest variance.
         prediction_range = self.current_working_memory[:input_number_samples,
-                           self.prediction_column_start:self.prediction_column_start \
-                                                            + self.classifiers_current_count]
+                               self.prediction_column_start:self.prediction_column_start + self.classifiers_current_count]
         prediction_variances = np.var(prediction_range, axis=0)  # column wise variance
         chosen_column = np.argmax(prediction_variances)
         soft_dec = prediction_range[:, chosen_column]
@@ -166,7 +152,7 @@ class RememberingVisualMachine:
         # instead of lavishly getting new ones, chinese restaurant?
         new_classifier = ClassifierNode(
             end_in_address=self.prediction_column_start + self.classifiers_current_count,
-            out_address=[self.prediction_column_start + self.classifiers_current_count + 1],
+            out_address=[self.prediction_column_start + self.classifiers_current_count],
             classifier_name=object_label)
         self.classifiers_current_count += 1
         # Need to take care of mismatch in length of working memory and input samples.
@@ -207,7 +193,7 @@ class RememberingVisualMachine:
             #    print 'In address', classifier_i.end_in_address
             # print 'Coefficients: ', classifier_i.classifier.coef_, classifier_i.classifier.intercept_
         if show_graph:
-            plt.imshow(self.current_working_memory[:200,4096:4196], interpolation='none', cmap='gray')
+            plt.imshow(self.current_working_memory[:200, 4096:4196], interpolation='none', cmap='gray')
             plt.title('Current working memory')
             plt.figure()
             plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
@@ -251,7 +237,7 @@ class RememberingVisualMachine:
 # Global functions
 # Reason for having 10 sigmoid is to get sharper distinction.
 def sigmoid_10(x):
-    return 1 / (1 + math.exp(-10*x))
+    return 1 / (1 + math.exp(-10 * x))
 
 
 # Following are required for custom functions Task 1,2
@@ -261,6 +247,7 @@ def meanie(x):
 
 def dot_with_11(x):
     return np.dot(x, np.array([0.5, 0.5]))
+
 
 def caffe_init():
     """
@@ -275,6 +262,7 @@ def caffe_init():
     if not os.path.isfile(caffe_root + 'models/bvlc_reference_caffenet/bvlc_reference_caffenet.caffemodel'):
         print("Downloading pre-trained CaffeNet model...")
         from subprocess import call
+
         call(['../scripts/download_model_binary.py ../models/bvlc_reference_caffenet'])
 
     caffe.set_mode_cpu()
@@ -284,11 +272,13 @@ def caffe_init():
 
     # input preprocessing: 'data' is the name of the input blob == net.inputs[0]
     transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
-    transformer.set_transpose('data', (2,0,1))
-    transformer.set_mean('data', np.load(caffe_root + 'python/caffe/imagenet/ilsvrc_2012_mean.npy').mean(1).mean(1)) # mean pixel
+    transformer.set_transpose('data', (2, 0, 1))
+    transformer.set_mean('data', np.load(caffe_root + 'python/caffe/imagenet/ilsvrc_2012_mean.npy').mean(1).mean(
+        1))  # mean pixel
     transformer.set_raw_scale('data', 255)  # the reference model operates on images in [0,255] range instead of [0,1]
-    transformer.set_channel_swap('data', (2,1,0))  # the reference model has channels in BGR order instead of RGB
+    transformer.set_channel_swap('data', (2, 1, 0))  # the reference model has channels in BGR order instead of RGB
     return net, transformer
+
 
 def extract_caffe_features(in_net, transformer_e, filename):
     """ Given a filename extracts the caffe features.
@@ -302,35 +292,36 @@ def extract_caffe_features(in_net, transformer_e, filename):
     feat = in_net.blobs['fc7'].data[0]
     return feat
 
+
+def caffe_directory(caffe_net, transformer_e, root_folder):
+    """
+    :param caffe_net: caffe net
+    :param transformer_e:  caffe transformer
+    :param root_folder: path of root folder which contains subdirectory for each class.
+    :return:
+    """
+    print 'Extracting caffe features from directory ', root_folder
+    categories = os.listdir(root_folder)
+    # Hold one out teaching. For each category, that category is positive, rest are negative.
+    for category_i in categories:
+        files_list = glob.glob(root_folder+ '/' + category_i + '/*.jpg')
+        caffe_matrix = np.vstack([copy.copy(extract_caffe_features(caffe_net, transformer_e, input_file))
+                            for input_file in files_list])
+        np.savetxt(root_folder+ '/' + category_i + '.caffe_feature.csv', caffe_matrix, delimiter=',')
+        print 'Features extracted from folder ', category_i, ' shape is ', caffe_matrix.shape
+
+
 if __name__ == '__main__':
     learning_phase = False
     classifier_file_name = 'RememberingClassifier.pkl'
+    caltech101_root = '/home/student/Downloads/101_ObjectCategories'
     caffe_net, caffe_transformer = caffe_init()
     if os.path.isfile(classifier_file_name):
         Main_C1 = pickle.load(open(classifier_file_name, 'r'))
     else:
         Main_C1 = RememberingVisualMachine(max_width=8000, input_width=4096, height=1000)
-
-    # Main_C1.fit(small_file_list, y, 'cat')
-    # Learn or not learn?
-    # if learning_phase:
-    #     School.class_digital_logic(Main_C1)
-    #     School.simple_custom_fitting_class(Main_C1)
-    # Main_C1.fit_custom_fx(np.mean,input_width=1500, output_width=1, task_name='np.mean')
-    # yp = Main_C1.predict(np.random.randn(8, 22))
-    # print 'Predicted value is ', yp
-    # Main_C1.remove_classifier('np.mean')
-    School.caltech_101(Main_C1)
-    School.caltech_101_test(Main_C1)
+    # School.caltech_101(Main_C1)
+    # School.caltech_101_test(Main_C1)
+    # caffe_directory(caffe_net, caffe_transformer, caltech101_root)
     Main_C1.status(show_graph=False)
     pickle.dump(Main_C1, open(classifier_file_name, 'w'))
-
-    # Scratch -----------------------------------------------------
-    # if os.path.isfile(cat_file):
-    #     cat_features = copy.copy(extract_caffe_features(caffe_net, transformer, cat_file))
-    #     fish_features = copy.copy(extract_caffe_features(caffe_net, transformer, fish_file))
-    #     print 'caffe features extracted.'
-    #     plt.plot(cat_features, '.')
-    #     plt.plot(fish_features, 'r.')
-    #     plt.plot
-    #     plt.show()
