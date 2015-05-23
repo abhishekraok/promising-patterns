@@ -113,8 +113,6 @@ def caltech_101(classifier, negatives_samples_ratio=2, max_categories=None):
         y = [1]*len(positive_list) + [0]*len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         classifier.fit(x_train, y_train, category_i)
-        score = classifier.score(x_test, y_test)
-        print 'Now I can see ', category_i, ' score is ', score
 
 def caltech_101_test(classifier, max_categories=None):
     """
@@ -123,7 +121,7 @@ def caltech_101_test(classifier, max_categories=None):
     :param classifier:
     :return: The mean F1 score.
     """
-    print 'CalTech 101 dataset testing started'
+    print 'Exam time! time for the CalTech101 test. All the best'
     root = '/home/student/Downloads/101_ObjectCategories'
     categories = os.listdir(root)
     small_categories = categories[:max_categories] if max_categories is not None else categories
@@ -142,8 +140,8 @@ def caltech_101_test(classifier, max_categories=None):
         y = [1]*len(positive_list) + [0]*len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         score = classifier.score(x_test, y_test)
-        print 'In the category ', category_i, ' score is ', score
+        print 'In the category ', category_i, ' F1 score is ', score
         score_sheet.append(score)
-    print 'The mean score among all the classes is ', np.mean(score_sheet)
+    print 'The mean F1 score among all the classes is ', np.mean(score_sheet)
     return np.mean(score_sheet)
 

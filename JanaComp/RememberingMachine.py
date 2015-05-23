@@ -6,9 +6,9 @@ extracted features to form a persistent classifier that  remembers
 from all the past classification task.
 
 Update: 23 May 2015. Trying to make the classifiers growable, and not fixed width.
+both height and width should be growable. Done
+return label based on address out of classifier.
 """
-
-# TODO  Use this as the input for remembering classifier.
 
 __author__ = 'Abhishek Rao'
 
@@ -17,12 +17,13 @@ import numpy as np
 from sklearn import svm
 import math
 import matplotlib.pyplot as plt
-import pickle
+import cPickle as pickle
 from sklearn.metrics import f1_score
 import sys
 import os
 import copy
 import glob
+import time
 # Make sure that caffe is on the python path:
 caffe_root = '/home/student/ln_onedrive/code/promising-patterns/caffe/'  # this file is expected to be in {caffe_root}/examples
 sys.path.insert(0, caffe_root + 'python')
@@ -73,23 +74,20 @@ class RememberingVisualMachine:
     """ A machine which stores both input X and the current output of bunch of classifiers.
     API should be similar to scikit learn"""
 
-    def __init__(self, max_width, input_width, height):
+    def __init__(self, input_width):
         """
         Initialize this class.
 
         :rtype : object self
-        :param max_width: maximum data dimension in current working memory, should be greater than
-            input_width.
-        :param input_width: maximum input dimension.
-        :param height: maximum number of input samples
+        :param input_width: maximum input dimension. 4096 for caffe features.
         :param front_end: a front end function that transforms the input to something else. e.g. a
             pre trained CNN. Any feature extractor.
         :return: None
         """
-        self.current_working_memory = np.zeros([height, max_width])
-        self.prediction_column_start = input_width  # the start of classifiers output.
-        self.classifiers_current_count = 0  # starting address for output for new classifier
-        # also the width of the current working memory.
+        self.current_working_memory = np.zeros([1, input_width])
+        self.prediction_column_start = input_width  # the start of classifiers output. Fixed.
+        self.memory_width = input_width  # starting address for output for new classifier
+        # also the width of the current working memory. Can grow.
         self.classifiers_list = []
 
     def predict(self, predict_files_list):
@@ -99,10 +97,11 @@ class RememberingVisualMachine:
 
         :returns: tuple of array and string.
             array is hard decision 1,0. String is the classifier class detected."""
-        self.current_working_memory *= 0  # Flush the current input
-        x_pred = np.vstack([copy.copy(extract_caffe_features(caffe_net, caffe_transformer, input_file))
+        x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
                             for input_file in predict_files_list])
         input_number_samples, input_feature_dimension = x_pred.shape
+        # Create a blank slate for working with.
+        self.current_working_memory = np.zeros([input_number_samples, self.memory_width])
         if len(x_pred.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
@@ -117,7 +116,7 @@ class RememberingVisualMachine:
         # Prediction scheme. Return the column in the classifier range (not input range) column with
         # highest variance.
         prediction_range = self.current_working_memory[:input_number_samples,
-                               self.prediction_column_start:self.prediction_column_start + self.classifiers_current_count]
+                               self.prediction_column_start:self.memory_width]
         # Which column to choose? Now we are selecting column that has hightest sum.
         # Since decision function is signed distance from hyperplane, we want positives.
         # if we square we will get negatives too.
@@ -126,27 +125,43 @@ class RememberingVisualMachine:
         classifier_labels = [classifier_i.label for classifier_i
                              in self.classifiers_list]  # assuming single width
         soft_dec = prediction_range[:, chosen_column]
-        print 'Looks like images of ', classifier_labels[chosen_column], ' confidence = ', np.mean(soft_dec)
+        print 'Looks like images of ', classifier_labels[chosen_column], ' confidence = ', \
+            np.mean(np.square(soft_dec))
         # Do hard decision, return only 1,0
         return np.array(soft_dec > 0, dtype=np.int16), classifier_labels[chosen_column],
 
 
-    def fit(self, input_file_list, y, object_label='Default'):
+    def fit(self, input_file_list, y, object_label='Default', relearn=False):
         """
         Adds a new classifier and trains it, similar to Scikit API
 
         :type input_file_list: list
         :param input_file_list: Input image files list
         :param y:  labels
+        :param relearn: boolean, default False, if True if the label exists,
+            predicts and checks score. If it is low, relearns the task.
         :return: None
         """
-        # check for limit reach for number of classifiers.
-        if self.classifiers_current_count + self.prediction_column_start \
-                > self.current_working_memory.shape[1]:
-            print 'No more space for classifier. ERROR'
-            raise MemoryError
-
-        x_in = np.vstack([copy.copy(extract_caffe_features(caffe_net, caffe_transformer, input_file))
+        # caching classifiers. Check if one has to relearn. if yes
+        # the tries the score for this task. If score is good wont bother relearning.
+        # else will relearn.
+        if object_label in [classifier_i.label for classifier_i in self.classifiers_list]:
+            print 'I have already been trained on the task of ', object_label
+            if relearn:
+                print 'Let me see how good I can remember this'
+                score = self.score(input_file_list, y)
+                if score > 0.5:
+                    print 'I can do this task with F1 score of ', score, \
+                        'so I wont bother learning again'
+                    return
+                else:
+                    print 'Woah!O_o  this is totally different from what I know.', \
+                          'will learn again'
+            else:
+                print 'I wont bother learning again. Feeling lazy :P '
+                return
+        print 'Learning to recognize ', object_label, ' address will be ', self.memory_width
+        x_in = np.vstack([copy.copy(extract_caffe_features(input_file))
                           for input_file in input_file_list])
         self.fit_from_caffe_features(x_in, y, object_label)
 
@@ -159,25 +174,21 @@ class RememberingVisualMachine:
         :return: None
         """
         input_number_samples, input_feature_dimension = x_in.shape
-        # Checking the input height is not above limit
-        if input_number_samples > max_input_samples:
-            print 'Number of input samples too high, truncating'
-            x_in = x_in[:max_input_samples, :]
-            input_number_samples, input_feature_dimension = x_in.shape
         if len(x_in.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
-        self.current_working_memory[:x_in.shape[0], :x_in.shape[1]] = x_in
+        self.current_working_memory = np.zeros([input_number_samples, self.memory_width])
+        self.current_working_memory[:, :x_in.shape[1]] = x_in
         # Procure a new classifier, this might be wasteful, later perhaps reuse classifier
         # instead of lavishly getting new ones, chinese restaurant?
-        new_classifier = ClassifierNode(
-            end_in_address=self.prediction_column_start + self.classifiers_current_count,
-            out_address=[self.prediction_column_start + self.classifiers_current_count],
-            classifier_name=object_label)
-        self.classifiers_current_count += 1
+        new_classifier = ClassifierNode(end_in_address=self.memory_width,
+                                        out_address=[self.memory_width],
+                                        classifier_name=object_label)
         # Need to take care of mismatch in length of working memory and input samples.
-        new_classifier.fit(self.current_working_memory[:input_number_samples], y)
+        new_classifier.fit(self.current_working_memory, y)
+        self.memory_width += 1
         self.classifiers_list.append(new_classifier)
+        self.save(filename=classifier_file_name)  # caching of classifiers.
 
     def fit_custom_fx(self, custom_function, input_width, output_width, task_name):
         """
@@ -191,17 +202,17 @@ class RememberingVisualMachine:
         """
         new_classifier = ClassifierNode(
             end_in_address=input_width,
-            out_address=self.prediction_column_start + self.classifiers_current_count + np.arange(output_width),
+            out_address=self.memory_width + np.arange(output_width),
             classifier_name=task_name,
             given_predictor=custom_function
         )
-        self.classifiers_current_count += output_width
+        self.memory_width += output_width
         self.classifiers_list.append(new_classifier)
 
     def status(self, show_graph=False):
         """Gives out the current status, like number of classifier and prints their values"""
         print 'Currently there are ', len(self.classifiers_list), ' classifiers. They are'
-        classifiers_coefficients = np.zeros(self.current_working_memory.shape)
+        classifiers_coefficients = np.zeros([len(self.classifiers_list), self.memory_width])
         print [classifier_i.label for classifier_i in self.classifiers_list]
         for count, classifier_i in enumerate(self.classifiers_list):
             coeffs_i = classifier_i.classifier.coef_ \
@@ -213,7 +224,8 @@ class RememberingVisualMachine:
             #    print 'In address', classifier_i.end_in_address
             # print 'Coefficients: ', classifier_i.classifier.coef_, classifier_i.classifier.intercept_
         if show_graph:
-            plt.imshow(self.current_working_memory[:200, 4096:4196], interpolation='none', cmap='gray')
+            plt.imshow(self.current_working_memory[:200, self.prediction_column_start:
+                self.memory_width], interpolation='none', cmap='gray')
             plt.title('Current working memory')
             plt.figure()
             plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
@@ -226,24 +238,25 @@ class RememberingVisualMachine:
         :param classifier_name: the label of the classifier to be removed.
         :return: the index of removed classifier. -1 if not found.
         """
+        labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         try:
-            labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
+            labels_list.index(classifier_name)
         except ValueError:
             print 'The specified label does not exist.'
             return -1
         removing_index = labels_list.index(classifier_name)
         self.classifiers_list.pop(removing_index)
-        print 'Classifier was removed. Its nae was', classifier_name
+        print 'I no longer remember what a ', classifier_name, ' looks like :( '
         return removing_index
 
-    def score(self, x_in, y):
+    def score(self, files_list, y):
         """
         Gives the accuracy between predicted( x_in) and y
-        :param x_in: 2d matrix, samples x_in dimension
+        :param files_list: 2d matrix, samples x_in dimension
         :param y: actual label
         :return: float, between 0 to 1
         """
-        yp_score, _ = self.predict(x_in)
+        yp_score, _ = self.predict(files_list)
         return f1_score(y, y_pred=yp_score)
 
     def generic_task(self, x_in, y, task_name):
@@ -252,6 +265,13 @@ class RememberingVisualMachine:
         """
         self.fit(x_in, y, object_label=task_name)
         print 'The score for task ', task_name, ' is ', self.score(x_in, y)
+
+    def save(self, filename="RememberingClassifier.pkl"):
+        """
+        Pickle thyself.
+        """
+        pickle.dump(self, open(filename, 'w'))
+        print 'Remembering Machine saved.'
 
 
 # Global functions
@@ -275,10 +295,6 @@ def caffe_init():
     :return:
     the caffe net and transformer
     """
-    # plt.rcParams['figure.figsize'] = (10, 10)
-    # plt.rcParams['image.interpolation'] = 'nearest'
-    # plt.rcParams['image.cmap'] = 'gray'
-
     if not os.path.isfile(caffe_root + 'models/bvlc_reference_caffenet/bvlc_reference_caffenet.caffemodel'):
         print("Downloading pre-trained CaffeNet model...")
         from subprocess import call
@@ -300,58 +316,75 @@ def caffe_init():
     return net, transformer
 
 
-def extract_caffe_features(in_net, transformer_e, filename):
+def extract_caffe_features(filename):
     """ Given a filename extracts the caffe features.
 
     Argument:
-        in_net: The caffe net
         filename: string path to file
     """
-    in_net.blobs['data'].data[...] = transformer_e.preprocess('data', caffe.io.load_image(filename))
-    in_net.forward()
-    feat = in_net.blobs['fc7'].data[0]
+    # cachine file feature.
+    cached_caffe_file = filename[:-3] + 'caffe_feature.csv'
+    if os.path.isfile(cached_caffe_file):
+        return np.loadtxt(cached_caffe_file, delimiter=',')
+    # Caching of caffe net. Initialize first time
+    try:
+        caffe_net
+    except NameError:
+        global caffe_net, caffe_transformer
+        caffe_net, caffe_transformer = caffe_init()
+
+    caffe_net.blobs['data'].data[...] = caffe_transformer.preprocess('data', caffe.io.load_image(filename))
+    caffe_net.forward()
+    feat = caffe_net.blobs['fc7'].data[0]
+    np.savetxt(cached_caffe_file, feat, delimiter=',')
     return feat
 
 
-def caffe_directory(caffe_net, transformer_e, root_folder):
+def caffe_directory(root_folder):
     """
-    :param caffe_net: caffe net
-    :param transformer_e:  caffe transformer
     :param root_folder: path of root folder which contains subdirectory for each class.
     :return:
     """
     print 'Extracting caffe features from directory ', root_folder
-    categories = os.listdir(root_folder)
+    # get all the directories in the root folder.
+    categories = [i for i in os.listdir(root_folder)
+                  if os.path.isdir(os.path.join(root_folder, i))]
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     for category_i in categories:
-        files_list = glob.glob(root_folder+ '/' + category_i + '/*.jpg')
-        caffe_matrix = np.vstack([copy.copy(extract_caffe_features(caffe_net, transformer_e, input_file))
-                            for input_file in files_list])
-        np.savetxt(root_folder+ '/' + category_i + '.caffe_feature.csv', caffe_matrix, delimiter=',')
-        print 'Features extracted from folder ', category_i, ' shape is ', caffe_matrix.shape
+        caffe_file_name = root_folder+ '/' + category_i + '.caffe_feature.csv'
+        # caching, check if file exist.
+        if not os.path.isfile(caffe_file_name):
+            files_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
+            caffe_matrix = np.vstack([copy.copy(extract_caffe_features(input_file))
+                                for input_file in files_list])
+            np.savetxt(caffe_file_name, caffe_matrix, delimiter=',')
+            print 'Features extracted from folder ', category_i, ' shape is ', caffe_matrix.shape
+        else:
+            print 'Caffe feature file exists for ', category_i
 
 
 # Constants
-max_input_samples = 1000
 input_dimension = 4096
 
 
 if __name__ == '__main__':
-    learning_phase = False
+    start_time = time.time()
+    learning_phase = True
     classifier_file_name = 'RememberingClassifier.pkl'
     caltech101_root = '/home/student/Downloads/101_ObjectCategories'
-    rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
-                        '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
-                        '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']
-    caffe_net, caffe_transformer = caffe_init()
+    # rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
+    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
+    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']
     if os.path.isfile(classifier_file_name):
         Main_C1 = pickle.load(open(classifier_file_name, 'r'))
     else:
-        Main_C1 = RememberingVisualMachine(max_width=8000, input_width=input_dimension, height=max_input_samples)
+        Main_C1 = RememberingVisualMachine(input_width=input_dimension)
     if learning_phase:
         School.caltech_101(Main_C1)
-        School.caltech_101_test(Main_C1)
-    # caffe_directory(caffe_net, caffe_transformer, caltech101_root)
-    Main_C1.predict(rhino_files_list)
-    # Main_C1.status(show_graph=False)
-    pickle.dump(Main_C1, open(classifier_file_name, 'w'))
+        School.caltech_101_test(Main_C1, max_categories=2)
+    # Main_C1.remove_classifier('elephant')
+    # caffe_directory(caltech101_root)
+    # Main_C1.predict(rhino_files_list)
+    Main_C1.status(show_graph=True)
+    Main_C1.save(filename=classifier_file_name)
+    print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'
