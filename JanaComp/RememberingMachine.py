@@ -5,6 +5,7 @@ This classifier uses a pre-trained CNN as the front end and uses those
 extracted features to form a persistent classifier that  remembers
 from all the past classification task.
 
+Update: 23 May 2015. Trying to make the classifiers growable, and not fixed width.
 """
 
 # TODO  Use this as the input for remembering classifier.
@@ -63,14 +64,16 @@ class ClassifierNode:
         else:
             dec_fx_in = self.given_predictor(new_x_in)
         # Convert it into mapping between 0 to 1 instead of -1 to 1
-        return np.array([sigmoid_10(i) for i in dec_fx_in])
+        # Sigmoid required? Think I'll remove it.
+        # return np.array([sigmoid_10(i) for i in dec_fx_in])
+        return dec_fx_in
 
 
 class RememberingVisualMachine:
     """ A machine which stores both input X and the current output of bunch of classifiers.
     API should be similar to scikit learn"""
 
-    def __init__(self, max_width, input_width, height, front_end=None):
+    def __init__(self, max_width, input_width, height):
         """
         Initialize this class.
 
@@ -86,12 +89,16 @@ class RememberingVisualMachine:
         self.current_working_memory = np.zeros([height, max_width])
         self.prediction_column_start = input_width  # the start of classifiers output.
         self.classifiers_current_count = 0  # starting address for output for new classifier
+        # also the width of the current working memory.
         self.classifiers_list = []
 
     def predict(self, predict_files_list):
         """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
 
-        :param: predict_files_list: input files list, list of strings"""
+        :param: predict_files_list: input files list, list of strings
+
+        :returns: tuple of array and string.
+            array is hard decision 1,0. String is the classifier class detected."""
         self.current_working_memory *= 0  # Flush the current input
         x_pred = np.vstack([copy.copy(extract_caffe_features(caffe_net, caffe_transformer, input_file))
                             for input_file in predict_files_list])
@@ -101,7 +108,7 @@ class RememberingVisualMachine:
             raise ValueError
         self.current_working_memory[:input_number_samples, :input_feature_dimension] = x_pred
         for classifier_i in self.classifiers_list:
-            predicted_value = classifier_i.predict(self.current_working_memory)
+            predicted_value = classifier_i.predict(self.current_working_memory[:input_number_samples, :])
             predicted_shape = predicted_value.shape
             if len(predicted_shape) < 2:
                 predicted_value = predicted_value.reshape(-1, 1)
@@ -111,10 +118,18 @@ class RememberingVisualMachine:
         # highest variance.
         prediction_range = self.current_working_memory[:input_number_samples,
                                self.prediction_column_start:self.prediction_column_start + self.classifiers_current_count]
-        prediction_variances = np.var(prediction_range, axis=0)  # column wise variance
-        chosen_column = np.argmax(prediction_variances)
+        # Which column to choose? Now we are selecting column that has hightest sum.
+        # Since decision function is signed distance from hyperplane, we want positives.
+        # if we square we will get negatives too.
+        prediction_energy = np.sum(prediction_range, axis=0)
+        chosen_column = np.argmax(prediction_energy)
+        classifier_labels = [classifier_i.label for classifier_i
+                             in self.classifiers_list]  # assuming single width
         soft_dec = prediction_range[:, chosen_column]
-        return np.array(soft_dec > 0.5, dtype=np.int16)
+        print 'Looks like images of ', classifier_labels[chosen_column], ' confidence = ', np.mean(soft_dec)
+        # Do hard decision, return only 1,0
+        return np.array(soft_dec > 0, dtype=np.int16), classifier_labels[chosen_column],
+
 
     def fit(self, input_file_list, y, object_label='Default'):
         """
@@ -144,6 +159,11 @@ class RememberingVisualMachine:
         :return: None
         """
         input_number_samples, input_feature_dimension = x_in.shape
+        # Checking the input height is not above limit
+        if input_number_samples > max_input_samples:
+            print 'Number of input samples too high, truncating'
+            x_in = x_in[:max_input_samples, :]
+            input_number_samples, input_feature_dimension = x_in.shape
         if len(x_in.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
@@ -223,7 +243,7 @@ class RememberingVisualMachine:
         :param y: actual label
         :return: float, between 0 to 1
         """
-        yp_score = self.predict(x_in)
+        yp_score, _ = self.predict(x_in)
         return f1_score(y, y_pred=yp_score)
 
     def generic_task(self, x_in, y, task_name):
@@ -311,17 +331,27 @@ def caffe_directory(caffe_net, transformer_e, root_folder):
         print 'Features extracted from folder ', category_i, ' shape is ', caffe_matrix.shape
 
 
+# Constants
+max_input_samples = 1000
+input_dimension = 4096
+
+
 if __name__ == '__main__':
     learning_phase = False
     classifier_file_name = 'RememberingClassifier.pkl'
     caltech101_root = '/home/student/Downloads/101_ObjectCategories'
+    rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
+                        '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
+                        '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']
     caffe_net, caffe_transformer = caffe_init()
     if os.path.isfile(classifier_file_name):
         Main_C1 = pickle.load(open(classifier_file_name, 'r'))
     else:
-        Main_C1 = RememberingVisualMachine(max_width=8000, input_width=4096, height=1000)
-    # School.caltech_101(Main_C1)
-    # School.caltech_101_test(Main_C1)
+        Main_C1 = RememberingVisualMachine(max_width=8000, input_width=input_dimension, height=max_input_samples)
+    if learning_phase:
+        School.caltech_101(Main_C1)
+        School.caltech_101_test(Main_C1)
     # caffe_directory(caffe_net, caffe_transformer, caltech101_root)
-    Main_C1.status(show_graph=False)
+    Main_C1.predict(rhino_files_list)
+    # Main_C1.status(show_graph=False)
     pickle.dump(Main_C1, open(classifier_file_name, 'w'))

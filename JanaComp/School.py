@@ -94,12 +94,11 @@ def simple_custom_fitting_class(classifier):
     classifier.fit_custom_fx(meanie, 1500, 1, 'np.mean')
 
 
-def caltech_101(classifier, negatives_samples_ratio=2):
+def caltech_101(classifier, negatives_samples_ratio=2, max_categories=None):
     print 'CalTech 101 dataset training started'
     root = '/home/student/Downloads/101_ObjectCategories'
     categories = os.listdir(root)
-    # TODO remove this, for debugging only
-    small_categories = categories[:3]
+    small_categories = categories[:max_categories] if max_categories is not None else categories
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     for category_i in small_categories:
         positive_list = glob.glob(root + '/' + category_i + '/*.jpg')
@@ -117,7 +116,7 @@ def caltech_101(classifier, negatives_samples_ratio=2):
         score = classifier.score(x_test, y_test)
         print 'Now I can see ', category_i, ' score is ', score
 
-def caltech_101_test(classifier):
+def caltech_101_test(classifier, max_categories=None):
     """
     A test to see how well CalTech 101 was learnt.
 
@@ -127,8 +126,7 @@ def caltech_101_test(classifier):
     print 'CalTech 101 dataset testing started'
     root = '/home/student/Downloads/101_ObjectCategories'
     categories = os.listdir(root)
-    # TODO remove this, for debugging only
-    small_categories = categories[:3]
+    small_categories = categories[:max_categories] if max_categories is not None else categories
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     score_sheet = []  # Place to store all the scores.
     for category_i in small_categories:
