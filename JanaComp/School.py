@@ -20,7 +20,7 @@ def task_and(classifier):
     print X
     y = np.array([[0, 0, 1, 0] * 2 + [0]])
     y_big = np.hstack([y] * 10).flatten()
-    classifier.fit(X, y_big, object_label='Noisy and long')
+    classifier.fit(X, y_big, classifier_name='Noisy and long')
     yp = classifier.predict(X)
     print 'Predicted value is '
     print yp
@@ -38,7 +38,7 @@ def task_XOR_problem(classifier):
                   [1, 1],
                   [0, 0]] * 50)
     y = np.array([1, 1, 0, 0] * 50)
-    classifier.fit(X, y, object_label='XOR task')
+    classifier.fit(X, y, classifier_name='XOR task')
     yp = classifier.predict(X)
     print 'Predicted value is '
     print yp
@@ -56,7 +56,7 @@ def task_OR_problem(classifier):
                   [1, 1],
                   [0, 0]] * 50)
     y = np.array([1, 1, 1, 0] * 50)
-    classifier.fit(X, y, object_label='OR task')
+    classifier.fit(X, y, classifier_name='OR task')
     yp = classifier.predict(X)
     print 'Predicted value is '
     print yp
@@ -97,7 +97,8 @@ def simple_custom_fitting_class(classifier):
 def caltech_101(classifier, negatives_samples_ratio=2, max_categories=None):
     print 'CalTech 101 dataset training started'
     root = '/home/student/Downloads/101_ObjectCategories'
-    categories = os.listdir(root)
+    categories = [i for i in os.listdir(root)
+                  if os.path.isdir(os.path.join(root, i))]
     small_categories = categories[:max_categories] if max_categories is not None else categories
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     for category_i in small_categories:
@@ -112,7 +113,8 @@ def caltech_101(classifier, negatives_samples_ratio=2, max_categories=None):
         x_total = positive_list + small_negative_list
         y = [1]*len(positive_list) + [0]*len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
-        classifier.fit(x_train, y_train, category_i)
+        task_name = 'CalTech101_' + category_i
+        classifier.fit(x_train, y_train, task_name)
 
 def caltech_101_test(classifier, max_categories=None):
     """
@@ -123,7 +125,8 @@ def caltech_101_test(classifier, max_categories=None):
     """
     print 'Exam time! time for the CalTech101 test. All the best'
     root = '/home/student/Downloads/101_ObjectCategories'
-    categories = os.listdir(root)
+    categories = [i for i in os.listdir(root)
+                  if os.path.isdir(os.path.join(root, i))]
     small_categories = categories[:max_categories] if max_categories is not None else categories
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     score_sheet = []  # Place to store all the scores.

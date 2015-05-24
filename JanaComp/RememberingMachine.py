@@ -8,6 +8,7 @@ from all the past classification task.
 Update: 23 May 2015. Trying to make the classifiers growable, and not fixed width.
 both height and width should be growable. Done
 return label based on address out of classifier.
+Next tasks: Generative model, given label, generate a sample
 """
 
 __author__ = 'Abhishek Rao'
@@ -131,7 +132,7 @@ class RememberingVisualMachine:
         return np.array(soft_dec > 0, dtype=np.int16), classifier_labels[chosen_column],
 
 
-    def fit(self, input_file_list, y, object_label='Default', relearn=False):
+    def fit(self, input_file_list, y, classifier_name='Default', relearn=False):
         """
         Adds a new classifier and trains it, similar to Scikit API
 
@@ -142,11 +143,15 @@ class RememberingVisualMachine:
             predicts and checks score. If it is low, relearns the task.
         :return: None
         """
+        # check for empty list
+        if not len(input_file_list):
+            print 'Hey man there is nothing in this task', classifier_name, ' returning.'
+            return
         # caching classifiers. Check if one has to relearn. if yes
         # the tries the score for this task. If score is good wont bother relearning.
         # else will relearn.
-        if object_label in [classifier_i.label for classifier_i in self.classifiers_list]:
-            print 'I have already been trained on the task of ', object_label
+        if classifier_name in [classifier_i.label for classifier_i in self.classifiers_list]:
+            print 'I have already been trained on the task of ', classifier_name
             if relearn:
                 print 'Let me see how good I can remember this'
                 score = self.score(input_file_list, y)
@@ -160,12 +165,12 @@ class RememberingVisualMachine:
             else:
                 print 'I wont bother learning again. Feeling lazy :P '
                 return
-        print 'Learning to recognize ', object_label, ' address will be ', self.memory_width
+        print 'Learning to recognize ', classifier_name, ' address will be ', self.memory_width
         x_in = np.vstack([copy.copy(extract_caffe_features(input_file))
                           for input_file in input_file_list])
-        self.fit_from_caffe_features(x_in, y, object_label)
+        self.fit_from_caffe_features(x_in, y, classifier_name)
 
-    def fit_from_caffe_features(self, x_in, y, object_label='Default'):
+    def fit_from_caffe_features(self, x_in, y, classifier_name='Default'):
         """
         Adds a new classifier and trains it, similar to Scikit API
 
@@ -183,7 +188,7 @@ class RememberingVisualMachine:
         # instead of lavishly getting new ones, chinese restaurant?
         new_classifier = ClassifierNode(end_in_address=self.memory_width,
                                         out_address=[self.memory_width],
-                                        classifier_name=object_label)
+                                        classifier_name=classifier_name)
         # Need to take care of mismatch in length of working memory and input samples.
         new_classifier.fit(self.current_working_memory, y)
         self.memory_width += 1
@@ -263,7 +268,7 @@ class RememberingVisualMachine:
         """
         A generic framework to train on different tasks.
         """
-        self.fit(x_in, y, object_label=task_name)
+        self.fit(x_in, y, classifier_name=task_name)
         print 'The score for task ', task_name, ' is ', self.score(x_in, y)
 
     def save(self, filename="RememberingClassifier.pkl"):
