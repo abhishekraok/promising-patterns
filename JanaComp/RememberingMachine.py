@@ -11,6 +11,7 @@ return label based on address out of classifier.
 Next tasks: Generative model, given label, generate a sample
 
 Update: 24 May 2015. Added a method for generating a sample from any label.
+added methods to reflect, similar labels and daisy chain.
 """
 
 __author__ = 'Abhishek Rao'
@@ -28,6 +29,7 @@ import copy
 import glob
 import time
 import gzip
+from random import shuffle
 # Make sure that caffe is on the python path:
 caffe_root = '/home/student/ln_onedrive/code/promising-patterns/caffe/'  # this file is expected to be in {caffe_root}/examples
 sys.path.insert(0, caffe_root + 'python')
@@ -92,7 +94,8 @@ class RememberingVisualMachine:
         self.prediction_column_start = input_width  # the start of classifiers output. Fixed.
         self.memory_width = input_width  # starting address for output for new classifier
         # also the width of the current working memory. Can grow.
-        self.classifiers_list = []
+        self.classifiers_list = []  # list of classifiers
+        self.labels_list = []  # list of classifier names
 
 
     def predict(self, predict_files_list):
@@ -130,21 +133,45 @@ class RememberingVisualMachine:
             predicted_shape = predicted_value.shape
             self.current_working_memory[:predicted_shape[0], classifier_i.out_address] = predicted_value
         # Prediction scheme. Return the column in the classifier range (not input range) column with
-        # highest variance.
+        # highest variance. Note: memory width is next available address, so -1.
         prediction_range = self.current_working_memory[:input_number_samples,
-                               self.prediction_column_start:self.memory_width]
+                               self.prediction_column_start:self.memory_width - 1]
         # Which column to choose? Now we are selecting column that has hightest sum.
         # Since decision function is signed distance from hyperplane, we want positives.
         # if we square we will get negatives too.
         prediction_energy = np.sum(prediction_range, axis=0)
         chosen_column = np.argmax(prediction_energy)
-        classifier_labels = [classifier_i.label for classifier_i
-                             in self.classifiers_list]  # assuming single width
         soft_dec = prediction_range[:, chosen_column]
-        print 'Looks like images of ', classifier_labels[chosen_column], ' confidence = ', \
+        print 'Looks like images of ', self.labels_list[chosen_column], ' confidence = ', \
             np.mean(np.square(soft_dec))
         # Do hard decision, return only 1,0
-        return np.array(soft_dec > 0, dtype=np.int16), classifier_labels[chosen_column],
+        return np.array(soft_dec > 0, dtype=np.int16),  prediction_energy
+
+
+    def similar_labels(self, label):
+        """
+        Generates a sample from label class and then sees which are most similar.
+
+        :param label:
+        :return: 2 lists, first one labels list, second one confidence level for each.
+        """
+        generated_sample = self.generate_sample(label)
+        _, prediction_energy = self.predict_from_features(generated_sample)
+        # get the top ten active columns.
+        sorted_indices = np.argsort(prediction_energy)[-10:][::-1]
+        top_labels = np.array(self.labels_list)[sorted_indices]
+        # print 'top labels similar to ', label, ' are ', top_labels
+        # print 'their confidence levels are ', prediction_energy[sorted_indices]
+        return top_labels, prediction_energy[sorted_indices]
+
+
+    def daisy_chain(self, starting_label, chain_length=20):
+        daisy_chain = [starting_label]
+        for i in range(chain_length):
+            returned_labels_list, _ = self.similar_labels(starting_label)
+            starting_label = [i for i in returned_labels_list if i not in daisy_chain][0]
+            daisy_chain.append(starting_label)
+        return daisy_chain
 
 
     def fit(self, input_file_list, y, classifier_name='Default', relearn=False):
@@ -165,7 +192,7 @@ class RememberingVisualMachine:
         # caching classifiers. Check if one has to relearn. if yes
         # the tries the score for this task. If score is good wont bother relearning.
         # else will relearn.
-        if classifier_name in [classifier_i.label for classifier_i in self.classifiers_list]:
+        if classifier_name in self.labels_list:
             print 'I have already been trained on the task of ', classifier_name
             if relearn:
                 print 'Let me see how good I can remember this'
@@ -180,7 +207,6 @@ class RememberingVisualMachine:
             else:
                 print 'I wont bother learning again. Feeling lazy :P '
                 return
-        print 'Learning to recognize ', classifier_name, ' address will be ', self.memory_width
         x_in = np.vstack([copy.copy(extract_caffe_features(input_file))
                           for input_file in input_file_list])
         self.fit_from_caffe_features(x_in, y, classifier_name)
@@ -193,6 +219,7 @@ class RememberingVisualMachine:
         :param y:  labels
         :return: None
         """
+        print 'Learning to recognize ', classifier_name, ' address will be ', self.memory_width
         input_number_samples, input_feature_dimension = x_in.shape
         if len(x_in.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
@@ -207,6 +234,8 @@ class RememberingVisualMachine:
         # Need to take care of mismatch in length of working memory and input samples.
         new_classifier.fit(self.current_working_memory, y)
         self.memory_width += 1
+        # Update labels list
+        self.labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         self.classifiers_list.append(new_classifier)
         self.save(filename=classifier_file_name)  # caching of classifiers.
 
@@ -233,7 +262,7 @@ class RememberingVisualMachine:
         """Gives out the current status, like number of classifier and prints their values"""
         print 'Currently there are ', len(self.classifiers_list), ' classifiers. They are'
         classifiers_coefficients = np.zeros([len(self.classifiers_list), self.memory_width])
-        print [classifier_i.label for classifier_i in self.classifiers_list]
+        print self.labels_list
         for count, classifier_i in enumerate(self.classifiers_list):
             coeffs_i = classifier_i.classifier.coef_ \
                 if classifier_i.classifier_type == 'standard' else np.zeros([1, 1])
@@ -258,37 +287,69 @@ class RememberingVisualMachine:
         :param classifier_name: the label of the classifier to be removed.
         :return: the index of removed classifier. -1 if not found.
         """
-        labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         try:
-            labels_list.index(classifier_name)
+            self.labels_list.index(classifier_name)
         except ValueError:
             print 'The specified label does not exist.'
             return -1
-        removing_index = labels_list.index(classifier_name)
+        removing_index = self.labels_list.index(classifier_name)
         self.classifiers_list.pop(removing_index)
         print 'I no longer remember what a ', classifier_name, ' looks like :( '
         return removing_index
 
 
+    def generate_samples(self, labels_list):
+        """
+        Creates samples of the given classifier_name in working memory.
+        :param labels_list:  list of string, list of classifier names.
+        :return: a 2d matrix of coefficients.
+        """
+        generated_samples = [self.generate_sample(label_i) for label_i in labels_list]
+        widths = [i.shape[1] for i in generated_samples]
+        generated_matrix = np.zeros([len(labels_list), max(widths)])
+        for i,sample_i in enumerate(generated_samples):
+            generated_matrix[i,:sample_i.shape[1]] = sample_i
+        return generated_matrix
+
+
     def generate_sample(self, classifier_name):
         """
-        Creates a sample of the given classifier_name in working memory.
+        Creates a sample of the given classifier_name and returns it.
         :param classifier_name: the label of the classifier to be generated.
-        :return: the current working memory after generating sample.
+        :return: the coefficients of classifier. as a 1 row, n_col matrix.
         """
-        labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         try:
-            labels_list.index(classifier_name)
+            self.labels_list.index(classifier_name)
         except ValueError:
             print 'Dont know what the heck a ', classifier_name, ' is :( . Sorry.'
-            return None
-        classifier_index = labels_list.index(classifier_name)
+            raise ValueError
+        classifier_index = self.labels_list.index(classifier_name)
         coefficients = self.classifiers_list[classifier_index].classifier.coef_
         print 'Generating a sample of ', classifier_name
         max_coefficient = np.max(coefficients)
         normalized_coefficients = coefficients/max_coefficient \
             if abs(max_coefficient) > 1e-4 else coefficients
-        return normalized_coefficients
+        return normalized_coefficients.reshape(1,-1)
+
+
+    def reflect(self, classifier_name, other_labels_length = 10):
+        """
+        Given a label, generates it , an not it. And fits it again. Creates a new
+        label called reflected_classifier_name
+        :param classifier_name:
+        :return:
+        """
+        print 'Reflecting on ', classifier_name
+        generated_sample = self.generate_sample(classifier_name)
+        positive_train = np.vstack([generated_sample]*other_labels_length)
+        other_labels = [label_i for label_i in self.labels_list if label_i is not classifier_name]
+        shuffle(other_labels)
+        other_labels = other_labels[:other_labels_length]
+        other_samples = self.generate_samples(other_labels)
+        y = [1]*positive_train.shape[0] + [0]*other_samples.shape[0]
+        # create a zeros matrix that is wide enough to hold both. Max of columns size
+        X_train = np.zeros([len(y), max(other_samples.shape[1], positive_train.shape[1])])
+        self.fit_from_caffe_features(X_train, y, 'reflected_'+classifier_name)
 
 
     def score(self, files_list, y):
@@ -415,9 +476,12 @@ input_dimension = 4096
 
 if __name__ == '__main__':
     start_time = time.time()
-    learning_phase = True
+    learning_phase = False
     classifier_file_name = 'RememberingClassifier.pkl.gz'
     caltech101_root = '/home/student/Downloads/101_ObjectCategories'
+    elephant_files_list = ['/home/student/Downloads/101_ObjectCategories/elephant/image_0002.jpg',
+                           '/home/student/Downloads/101_ObjectCategories/elephant/image_0003.jpg',
+                           '/home/student/Downloads/101_ObjectCategories/elephant/image_0004.jpg']
     # rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
     #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
     #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']
@@ -432,7 +496,7 @@ if __name__ == '__main__':
         School.caltech_101_test(Main_C1, max_categories=4)
     # Main_C1.remove_classifier('elephant')
     # caffe_directory(caltech101_root)
-    # Main_C1.predict(rhino_files_list)
+    # Main_C1.predict(elephant_files_list)
     # starfish_file = '/home/student/Downloads/101_ObjectCategories/starfish/image_0002.jpg'
     # starfish_caffe_feature = extract_caffe_features(starfish_file)
     # starfish_generated_sample = Main_C1.generate_sample('starfish').reshape(1,-1)
@@ -440,6 +504,8 @@ if __name__ == '__main__':
     # matrix_to_send_in[0, :starfish_caffe_feature.shape[0] ] = starfish_caffe_feature
     # Main_C1.predict_from_features(matrix_to_send_in)
     # Main_C1.predict_from_features(starfish_generated_sample.reshape(1,-1))
-    Main_C1.status(show_graph=False)
+    # Main_C1.reflect('elephant')
+    print 'The daisy chain is ', Main_C1.daisy_chain('llama')
+    # Main_C1.status(show_graph=False)
     Main_C1.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'

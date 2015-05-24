@@ -145,6 +145,7 @@ def caltech_101_test(classifier, max_categories=None):
         score = classifier.score(x_test, y_test)
         print 'In the category ', category_i, ' F1 score is ', score
         score_sheet.append(score)
+    print '===================== Results ======================='
     print 'The mean F1 score among all the classes is ', np.mean(score_sheet)
     return np.mean(score_sheet)
 
