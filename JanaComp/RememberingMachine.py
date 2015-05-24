@@ -9,6 +9,8 @@ Update: 23 May 2015. Trying to make the classifiers growable, and not fixed widt
 both height and width should be growable. Done
 return label based on address out of classifier.
 Next tasks: Generative model, given label, generate a sample
+
+Update: 24 May 2015. Added a method for generating a sample from any label.
 """
 
 __author__ = 'Abhishek Rao'
@@ -25,6 +27,7 @@ import os
 import copy
 import glob
 import time
+import gzip
 # Make sure that caffe is on the python path:
 caffe_root = '/home/student/ln_onedrive/code/promising-patterns/caffe/'  # this file is expected to be in {caffe_root}/examples
 sys.path.insert(0, caffe_root + 'python')
@@ -91,6 +94,7 @@ class RememberingVisualMachine:
         # also the width of the current working memory. Can grow.
         self.classifiers_list = []
 
+
     def predict(self, predict_files_list):
         """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
 
@@ -100,12 +104,23 @@ class RememberingVisualMachine:
             array is hard decision 1,0. String is the classifier class detected."""
         x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
                             for input_file in predict_files_list])
-        input_number_samples, input_feature_dimension = x_pred.shape
-        # Create a blank slate for working with.
-        self.current_working_memory = np.zeros([input_number_samples, self.memory_width])
+        return self.predict_from_features(x_pred)
+
+
+    def predict_from_features(self, x_pred):
+        """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
+
+        :param: x_pred: input files list, list of strings
+
+        :returns: tuple of array and string.
+            array is hard decision 1,0. String is the classifier class detected."""
+        x_pred = np.array(x_pred)
         if len(x_pred.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
+        input_number_samples, input_feature_dimension = x_pred.shape
+        # Create a blank slate for working with.
+        self.current_working_memory = np.zeros([input_number_samples, self.memory_width])
         self.current_working_memory[:input_number_samples, :input_feature_dimension] = x_pred
         for classifier_i in self.classifiers_list:
             predicted_value = classifier_i.predict(self.current_working_memory[:input_number_samples, :])
@@ -254,6 +269,28 @@ class RememberingVisualMachine:
         print 'I no longer remember what a ', classifier_name, ' looks like :( '
         return removing_index
 
+
+    def generate_sample(self, classifier_name):
+        """
+        Creates a sample of the given classifier_name in working memory.
+        :param classifier_name: the label of the classifier to be generated.
+        :return: the current working memory after generating sample.
+        """
+        labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
+        try:
+            labels_list.index(classifier_name)
+        except ValueError:
+            print 'Dont know what the heck a ', classifier_name, ' is :( . Sorry.'
+            return None
+        classifier_index = labels_list.index(classifier_name)
+        coefficients = self.classifiers_list[classifier_index].classifier.coef_
+        print 'Generating a sample of ', classifier_name
+        max_coefficient = np.max(coefficients)
+        normalized_coefficients = coefficients/max_coefficient \
+            if abs(max_coefficient) > 1e-4 else coefficients
+        return normalized_coefficients
+
+
     def score(self, files_list, y):
         """
         Gives the accuracy between predicted( x_in) and y
@@ -275,7 +312,7 @@ class RememberingVisualMachine:
         """
         Pickle thyself.
         """
-        pickle.dump(self, open(filename, 'w'))
+        pickle.dump(self, gzip.open(filename, 'w'))
         print 'Remembering Machine saved.'
 
 
@@ -323,6 +360,7 @@ def caffe_init():
 
 def extract_caffe_features(filename):
     """ Given a filename extracts the caffe features.
+    Normalized by dividing by max.
 
     Argument:
         filename: string path to file
@@ -330,19 +368,22 @@ def extract_caffe_features(filename):
     # cachine file feature.
     cached_caffe_file = filename[:-3] + 'caffe_feature.csv'
     if os.path.isfile(cached_caffe_file):
-        return np.loadtxt(cached_caffe_file, delimiter=',')
-    # Caching of caffe net. Initialize first time
-    try:
-        caffe_net
-    except NameError:
-        global caffe_net, caffe_transformer
-        caffe_net, caffe_transformer = caffe_init()
+        feat = np.loadtxt(cached_caffe_file, delimiter=',')
+    else:
+        # Caching of caffe net. Initialize first time
+        try:
+            caffe_net
+        except NameError:
+            global caffe_net, caffe_transformer
+            caffe_net, caffe_transformer = caffe_init()
 
-    caffe_net.blobs['data'].data[...] = caffe_transformer.preprocess('data', caffe.io.load_image(filename))
-    caffe_net.forward()
-    feat = caffe_net.blobs['fc7'].data[0]
-    np.savetxt(cached_caffe_file, feat, delimiter=',')
-    return feat
+        caffe_net.blobs['data'].data[...] = caffe_transformer.preprocess('data', caffe.io.load_image(filename))
+        caffe_net.forward()
+        feat = caffe_net.blobs['fc7'].data[0]
+        np.savetxt(cached_caffe_file, feat, delimiter=',')
+    max_feat =np.max(feat)
+    normalized_feat = feat/max_feat if abs(max_feat) > 1e-4 else feat
+    return normalized_feat
 
 
 def caffe_directory(root_folder):
@@ -375,21 +416,30 @@ input_dimension = 4096
 if __name__ == '__main__':
     start_time = time.time()
     learning_phase = True
-    classifier_file_name = 'RememberingClassifier.pkl'
+    classifier_file_name = 'RememberingClassifier.pkl.gz'
     caltech101_root = '/home/student/Downloads/101_ObjectCategories'
     # rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
     #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
     #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']
+    print 'Loading classifier file ...'
     if os.path.isfile(classifier_file_name):
-        Main_C1 = pickle.load(open(classifier_file_name, 'r'))
+        Main_C1 = pickle.load(gzip.open(classifier_file_name, 'r'))
     else:
         Main_C1 = RememberingVisualMachine(input_width=input_dimension)
+    print 'Loading complete.'
     if learning_phase:
-        School.caltech_101(Main_C1)
-        School.caltech_101_test(Main_C1, max_categories=2)
+        # School.caltech_101(Main_C1)
+        School.caltech_101_test(Main_C1, max_categories=4)
     # Main_C1.remove_classifier('elephant')
     # caffe_directory(caltech101_root)
     # Main_C1.predict(rhino_files_list)
-    Main_C1.status(show_graph=True)
+    # starfish_file = '/home/student/Downloads/101_ObjectCategories/starfish/image_0002.jpg'
+    # starfish_caffe_feature = extract_caffe_features(starfish_file)
+    # starfish_generated_sample = Main_C1.generate_sample('starfish').reshape(1,-1)
+    # matrix_to_send_in = np.vstack([np.zeros([1, starfish_generated_sample.shape[1]]), starfish_generated_sample])
+    # matrix_to_send_in[0, :starfish_caffe_feature.shape[0] ] = starfish_caffe_feature
+    # Main_C1.predict_from_features(matrix_to_send_in)
+    # Main_C1.predict_from_features(starfish_generated_sample.reshape(1,-1))
+    Main_C1.status(show_graph=False)
     Main_C1.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'
