@@ -5,6 +5,7 @@ __author__ = 'Abhishek Rao'
 # Headers
 import numpy as np
 from LearningMachines2 import meanie, dot_with_11
+import idx2numpy
 from sklearn.cross_validation import train_test_split
 import os
 import glob
@@ -148,4 +149,43 @@ def caltech_101_test(classifier, max_categories=None):
     print '===================== Results ======================='
     print 'The mean F1 score among all the classes is ', np.mean(score_sheet)
     return np.mean(score_sheet)
+
+def mnist_school(classifier, samples_limit = 5123):
+    # Raw training, no caffe use.
+    print 'MNIST training started.'
+    mnist_file ='/home/student/Downloads/MNIST/train-images.idx3-ubyte'
+    if os.path.isfile(mnist_file):
+        train_arr = idx2numpy.convert_from_file(mnist_file)
+    else:
+        print 'Error, no file'
+        return
+    print 'Train array loaded, size is ',train_arr.shape
+    label_file = '/home/student/Downloads/MNIST/train-labels.idx1-ubyte'
+    label_arr = idx2numpy.convert_from_file(label_file)
+    print 'Train labels loaded, size is ', label_arr.shape
+    digits = set(label_arr)
+    # Train for each digit
+    for digit_i in digits:
+        # binarize
+        y = 1*(label_arr==digit_i)[:samples_limit]
+        x_train = np.vstack([i.flatten() for i in train_arr[:samples_limit]])
+        classifier.fit_from_caffe_features(x_train, y, 'MNIST_' + str(digit_i))
+    print 'MNIST training done.'
+    # Testing on last 1000 samples
+    print 'MNIST testing started.'
+    scores = []
+    for digit_i in digits:
+        # binarize
+        y = 1*(label_arr==digit_i)[-1000:]
+        x_train = np.vstack([i.flatten() for i in train_arr[-1000:]])
+        scores.append(classifier.score(x_train, y))
+    print 'The mean score for MNIST Task is ', np.mean(scores)
+
+
+
+
+
+
+
+
 
