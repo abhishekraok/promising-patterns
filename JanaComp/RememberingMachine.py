@@ -469,6 +469,22 @@ def caffe_directory(root_folder):
         else:
             print 'Caffe feature file exists for ', category_i
 
+def caffinate_directory(root_folder):
+    """
+    call extract caffe on each file so that a cache is created for each file.
+    :param root_folder: main directory.
+    :return:
+    """
+    print 'Caffinating directory ', root_folder
+    # get all the directories in the root folder.
+    categories = [i for i in os.listdir(root_folder)
+                  if os.path.isdir(os.path.join(root_folder, i))]
+    # Hold one out teaching. For each category, that category is positive, rest are negative.
+    for category_i in categories:
+        files_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
+        for input_file in files_list:
+            extract_caffe_features(input_file)
+    print 'Done caffinating.'
 
 # Constants
 input_dimension = 4096
@@ -478,13 +494,6 @@ if __name__ == '__main__':
     start_time = time.time()
     learning_phase = False
     classifier_file_name = 'RememberingClassifier.pkl.gz'
-    caltech101_root = '/home/student/Downloads/101_ObjectCategories'
-    elephant_files_list = ['/home/student/Downloads/101_ObjectCategories/elephant/image_0002.jpg',
-                           '/home/student/Downloads/101_ObjectCategories/elephant/image_0003.jpg',
-                           '/home/student/Downloads/101_ObjectCategories/elephant/image_0004.jpg']
-    # rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
-    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
-    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']
     print 'Loading classifier file ...'
     if os.path.isfile(classifier_file_name):
         Main_C1 = pickle.load(gzip.open(classifier_file_name, 'r'))
@@ -492,8 +501,14 @@ if __name__ == '__main__':
         Main_C1 = RememberingVisualMachine(input_width=input_dimension)
     print 'Loading complete.'
     if learning_phase:
-        # School.caltech_101(Main_C1)
-        School.caltech_101_test(Main_C1, max_categories=4)
+        School.caltech_101(Main_C1)
+        School.caltech_101_test(Main_C1, max_categories=10)
+    School.mnist_school(Main_C1)
+    # Main_C1.status(show_graph=False)
+    Main_C1.save(filename=classifier_file_name)
+    print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'
+    # Scratch
+    ##################################
     # Main_C1.remove_classifier('elephant')
     # caffe_directory(caltech101_root)
     # Main_C1.predict(elephant_files_list)
@@ -505,7 +520,12 @@ if __name__ == '__main__':
     # Main_C1.predict_from_features(matrix_to_send_in)
     # Main_C1.predict_from_features(starfish_generated_sample.reshape(1,-1))
     # Main_C1.reflect('elephant')
-    print 'The daisy chain is ', Main_C1.daisy_chain('llama')
-    # Main_C1.status(show_graph=False)
-    Main_C1.save(filename=classifier_file_name)
-    print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'
+    # caffinate_directory(paintings_root)
+    # caltech101_root = '/home/student/Downloads/101_ObjectCategories'
+    # paintings_root = '/home/student/Lpromising-patterns/paintings/data/two_class_full_size'
+    # elephant_files_list = ['/home/student/Downloads/101_ObjectCategories/elephant/image_0002.jpg',
+    #                        '/home/student/Downloads/101_ObjectCategories/elephant/image_0003.jpg',
+    #                        '/home/student/Downloads/101_ObjectCategories/elephant/image_0004.jpg']
+    # rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
+    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
+    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']
