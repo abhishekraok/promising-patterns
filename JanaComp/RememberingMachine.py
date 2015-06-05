@@ -23,6 +23,7 @@ import math
 import matplotlib.pyplot as plt
 import cPickle as pickle
 from sklearn.metrics import f1_score
+from sklearn.preprocessing import normalize
 import sys
 import os
 import copy
@@ -117,10 +118,11 @@ class RememberingVisualMachine:
 
         :returns: tuple of array and string.
             array is hard decision 1,0. String is the classifier class detected."""
-        x_pred = np.array(x_pred)
+        x_pred = np.array(x_pred,dtype=np.float)
         if len(x_pred.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
+        x_pred = normalize(x_pred)
         input_number_samples, input_feature_dimension = x_pred.shape
         # Create a blank slate for working with.
         self.current_working_memory = np.zeros([input_number_samples, self.memory_width])
@@ -189,29 +191,11 @@ class RememberingVisualMachine:
         if not len(input_file_list):
             print 'Hey man there is nothing in this task', classifier_name, ' returning.'
             return
-        # caching classifiers. Check if one has to relearn. if yes
-        # the tries the score for this task. If score is good wont bother relearning.
-        # else will relearn.
-        if classifier_name in self.labels_list:
-            print 'I have already been trained on the task of ', classifier_name
-            if relearn:
-                print 'Let me see how good I can remember this'
-                score = self.score(input_file_list, y)
-                if score > 0.5:
-                    print 'I can do this task with F1 score of ', score, \
-                        'so I wont bother learning again'
-                    return
-                else:
-                    print 'Woah!O_o  this is totally different from what I know.', \
-                          'will learn again'
-            else:
-                print 'I wont bother learning again. Feeling lazy :P '
-                return
         x_in = np.vstack([copy.copy(extract_caffe_features(input_file))
                           for input_file in input_file_list])
-        self.fit_from_caffe_features(x_in, y, classifier_name)
+        self.fit_from_caffe_features(x_in, y, classifier_name, relearn)
 
-    def fit_from_caffe_features(self, x_in, y, classifier_name='Default'):
+    def fit_from_caffe_features(self, x_in, y, classifier_name='Default', relearn=False):
         """
         Adds a new classifier and trains it, similar to Scikit API
 
@@ -219,6 +203,27 @@ class RememberingVisualMachine:
         :param y:  labels
         :return: None
         """
+        # caching classifiers. Check if one has to relearn. if yes
+        # the tries the score for this task. If score is good wont bother relearning.
+        # else will relearn.
+        if classifier_name in self.labels_list:
+            print 'I have already been trained on the task of ', classifier_name
+            if relearn:
+                print 'Let me see how good I can remember this'
+                score = self.score(x_in, y)
+                if score > 0.5:
+                    print 'I can do this task with F1 score of ', score, \
+                        'so I wont bother learning again'
+                    return
+                else:
+                    print 'Woah!O_o  this is totally different from what I know.', \
+                        'will learn again'
+            else:
+                print 'I wont bother learning again. Feeling lazy :P '
+                return
+        # Normalize
+        x_in = np.array(x_in, dtype=np.float)
+        x_in = normalize(x_in)
         print 'Learning to recognize ', classifier_name, ' address will be ', self.memory_width
         input_number_samples, input_feature_dimension = x_in.shape
         if len(x_in.shape) is not 2:
@@ -292,9 +297,11 @@ class RememberingVisualMachine:
         except ValueError:
             print 'The specified label does not exist.'
             return -1
-        removing_index = self.labels_list.index(classifier_name)
+        # Get the last index
+        removing_index = len(self.labels_list) - self.labels_list[::-1].index(classifier_name)
         self.classifiers_list.pop(removing_index)
         print 'I no longer remember what a ', classifier_name, ' looks like :( '
+        self.labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         return removing_index
 
 
@@ -352,15 +359,21 @@ class RememberingVisualMachine:
         self.fit_from_caffe_features(X_train, y, 'reflected_'+classifier_name)
 
 
-    def score(self, files_list, y):
+    def score(self, input_x, y):
         """
         Gives the accuracy between predicted( x_in) and y
-        :param files_list: 2d matrix, samples x_in dimension
+        :param input_x: 2d matrix, samples x_in dimension
         :param y: actual label
         :return: float, between 0 to 1
         """
-        yp_score, _ = self.predict(files_list)
-        return f1_score(y, y_pred=yp_score)
+        # check whether input is file_list or 2d array
+        if input_x[0] is str:
+            yp_score, _ = self.predict(input_x)
+            return f1_score(y, y_pred=yp_score)
+        else:
+            yp_score, _ = self.predict_from_features(input_x)
+            return f1_score(y, y_pred=yp_score)
+
 
     def generic_task(self, x_in, y, task_name):
         """
@@ -375,6 +388,20 @@ class RememberingVisualMachine:
         """
         pickle.dump(self, gzip.open(filename, 'w'))
         print 'Remembering Machine saved.'
+
+    def remove_duplicates(self):
+        print 'removing duplicates'
+        duplicates_list = []
+        for label_i in self.labels_list:
+            if self.labels_list.count(label_i) > 1:
+                if label_i not in duplicates_list:
+                    duplicates_list.append(label_i)
+        if duplicates_list is not []:
+            print 'Found duplicates ', duplicates_list
+            for label_i in duplicates_list:
+                self.remove_classifier(label_i)
+        else:
+            print 'No duplicates found.'
 
 
 # Global functions
@@ -503,9 +530,9 @@ if __name__ == '__main__':
     if learning_phase:
         School.caltech_101(Main_C1)
         School.caltech_101_test(Main_C1, max_categories=10)
-    School.mnist_school(Main_C1)
-    # Main_C1.status(show_graph=False)
-    Main_C1.save(filename=classifier_file_name)
+    # School.mnist_school(Main_C1)
+    Main_C1.status(show_graph=False)
+    # Main_C1.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'
     # Scratch
     ##################################
