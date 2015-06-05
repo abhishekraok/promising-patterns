@@ -22,6 +22,7 @@ import gzip
 # from random import shuffle
 from numpy.random import choice
 from numpy import linalg as LA
+import sklearn.datasets
 
 # Constants
 vector_retention_threshold = 0.1
@@ -139,9 +140,14 @@ if __name__ == '__main__':
     else:
         papu = UnsupervisedVectorMachines(input_width=max_input_dimension)
     print 'Loading complete.'
-    pattern = np.array([1, 0, 1, 0, 1, 0, 1]).reshape(1, -1)
-    pattern2 = np.array([1, 1, 1, 1, 0, 0, 0]).reshape(1, -1)
-    papu.see(pattern)
-    papu.see(pattern2)
+    # pattern = np.array([1, 0, 1, 0, 1, 0, 1]).reshape(1, -1)
+    # pattern2 = np.array([1, 1, 1, 1, 0, 0, 0]).reshape(1, -1)
+    # papu.see(pattern)
+    # papu.see(pattern2)
+    iris = sklearn.datasets.load_iris()
+    x_in = iris.data
+    for i in range(1):
+        for j in x_in[:3,:]:
+            papu.see(j.reshape(1,-1))
     papu.status(show_graph=True)
     papu.save(classifier_file_name)
