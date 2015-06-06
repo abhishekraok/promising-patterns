@@ -489,6 +489,7 @@ def caffe_directory(root_folder):
         # caching, check if file exist.
         if not os.path.isfile(caffe_file_name):
             files_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
+            files_list.extend(glob.glob(root_folder + '/' + category_i + '/*.JPEG'))
             caffe_matrix = np.vstack([copy.copy(extract_caffe_features(input_file))
                                 for input_file in files_list])
             np.savetxt(caffe_file_name, caffe_matrix, delimiter=',')
@@ -509,6 +510,7 @@ def caffinate_directory(root_folder):
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     for category_i in categories:
         files_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
+        files_list.extend(glob.glob(root_folder + '/' + category_i + '/*.JPEG'))
         for input_file in files_list:
             extract_caffe_features(input_file)
     print 'Done caffinating.'
@@ -531,6 +533,7 @@ if __name__ == '__main__':
         School.caltech_101(Main_C1)
         School.caltech_101_test(Main_C1, max_categories=10)
     # School.mnist_school(Main_C1)
+    School.imagenet_school_KG(Main_C1)
     Main_C1.status(show_graph=False)
     # Main_C1.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'

@@ -4,12 +4,14 @@ __author__ = 'Abhishek Rao'
 
 # Headers
 import numpy as np
-from LearningMachines2 import meanie, dot_with_11
 import idx2numpy
 from sklearn.cross_validation import train_test_split
 import os
 import glob
 from random import shuffle
+import urllib
+import tarfile
+import RememberingMachine
 
 
 def task_and(classifier):
@@ -182,10 +184,122 @@ def mnist_school(classifier, samples_limit = 5123):
     print 'The mean score for MNIST Task is ', np.mean(scores)
 
 
+# ################### Imagenet #########################################
+def download_imagenet_wnid(wnid, root_folder='./imagenet/'):
+    """ Given a wnid download  it from Imagenet.
+    :param wnid: string, imagenet wnid
+    :return: path of folder created.
+    """
+    if not os.path.exists(root_folder):
+        os.makedirs(root_folder)
+    # check if folder already exists
+    if not os.path.exists(root_folder + wnid):
+        username = 'abhishekraok'
+        with open('accesskey.txt','r') as afile:
+            accesskey = afile.read().strip()
+        url = 'http://www.image-net.org/download/synset?wnid=' + wnid + \
+              '&username=' + username + '&accesskey=' + accesskey + '&release=latest&src=stanford'
+        print 'Url to download is ', url
+        # Check if file is already downloaded
+        archive_file = root_folder + wnid+'.tar'
+        if not os.path.exists(archive_file):
+            urllib.urlretrieve(url, archive_file )
+        else:
+            print 'Archive file already exists.'
+        print 'extracting..'
+        try:
+            tar = tarfile.open(archive_file)
+        except tarfile.ReadError:
+            print 'Error, could not open ', archive_file, ', skipping.'
+            return None
+        os.makedirs(root_folder + wnid)
+        tar.extractall(path=root_folder+wnid+'/')
+        tar.close()
+        os.remove(archive_file)
+        print 'Folder created wnid=', wnid
+    else:
+        print 'Folder already exists'
+    return os.path.abspath(root_folder + wnid)
 
 
+def get_wornet_dict():
+    """
+    Returns a dictionary from wordnet file, which should be
+    located at ./imagenet/words.txt
+    :return: dictionry, key = name, value = wnid
+    """
+    with open('./imagenet/words.txt') as wordfile:
+        imagenet_word_list = wordfile.read()
+    return dict([i.split('\t')[::-1] for i in imagenet_word_list.split('\n')])
+
+def imagenet_school_KG(classifier, imagenet_words_list=None):
+    """
+    Kindgergarten of imagenet, where simple shapes are taught.
+
+    Given a list of string corresponding to wordnet words, download and
+    caffinate them.
+
+    :param classifier: the brave classifier willing to learn.
+    :param imagenet_words_list:  list of strings of imagenet words.
+    :return:
+    """
+    print 'Welcoem to Imagenet KG school'
+    if not imagenet_words_list:
+        imagenet_words_list = ['circle, round', 'line', 'triangle', 'square',
+                               'parallel', 'parallelogram' ]
+    imagenet_dict = get_wornet_dict()
+    wnid_list = [imagenet_dict[i] for i in imagenet_words_list]
+    valid_folders = []
+    root_folder = './imagenet/'
+    for wnid in wnid_list:
+        print 'Getting wnid', wnid
+        folder_i = download_imagenet_wnid(wnid, root_folder)
+        if folder_i:
+            valid_folders.append(folder_i)
+    # Caffinate it's parent directory
+    # RememberingMachine.caffinate_directory(os.path.abspath(os.path.join(valid_folders[0], os.path.pardir)))
+    folder_learner(classifier, root_folder, task_name_prefix='Imagenet_KG_')
 
 
+# ################## END imagenet ##################################################
+def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_ratio=2,
+                   max_categories=None):
+    """
+    :param classifier: A classifer that has fit function.
+    :param root_folder: directory which contains many classes
+    :param task_name_prefix: Name of the task to add to all, string
+    :param negatives_samples_ratio: amount of negative samples to use.
+    :param max_categories: maximum amount of categories to load.
+    :return:
+    """
+    print 'Folder training started with folder ', root_folder
+    categories = [i for i in os.listdir(root_folder)
+                  if os.path.isdir(os.path.join(root_folder, i))]
+    print 'Categories are ', categories
+    small_categories = categories[:max_categories] if max_categories is not None else categories
+    # Hold one out teaching. For each category, that category is positive, rest are negative.
+    # The negatives also consist of a background images folder.
+    for category_i in small_categories:
+        positive_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
+        positive_list.extend(glob.glob(root_folder + '/' + category_i + '/*.JPEG'))
+        negatives_list = []
+        for other_category_i in categories:
+            if other_category_i != category_i:
+                negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.jpg')
+                negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.JPEG')
+        shuffle(negatives_list)
+        positive_samples_count = len(positive_list)
+        small_negative_list = negatives_list[:positive_samples_count * negatives_samples_ratio]
+        small_negative_list.extend(glob.glob(
+            '/home/student/Downloads/101_ObjectCategories/BACKGROUND_Google' + '/*.jpg'))
+        x_total = positive_list + small_negative_list
+        y = [1]*len(positive_list) + [0]*len(small_negative_list)
+        x_train, x_test, y_train, y_test = train_test_split(x_total, y)
+        task_name = task_name_prefix + category_i
+        classifier.fit(x_train, y_train, task_name)
 
+if __name__ == '__main__':
+    pass
+    # download_imagenet_wnid('n03032811')
 
 
