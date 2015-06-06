@@ -11,7 +11,6 @@ import glob
 from random import shuffle
 import urllib
 import tarfile
-import RememberingMachine
 
 
 def task_and(classifier):
@@ -232,7 +231,7 @@ def get_wornet_dict():
         imagenet_word_list = wordfile.read()
     return dict([i.split('\t')[::-1] for i in imagenet_word_list.split('\n')])
 
-def imagenet_school_KG(classifier, imagenet_words_list=None):
+def imagenet_class_KG(classifier, imagenet_words_list=None):
     """
     Kindgergarten of imagenet, where simple shapes are taught.
 
@@ -243,7 +242,7 @@ def imagenet_school_KG(classifier, imagenet_words_list=None):
     :param imagenet_words_list:  list of strings of imagenet words.
     :return:
     """
-    print 'Welcoem to Imagenet KG school'
+    print 'Welcoem to Imagenet KG class'
     if not imagenet_words_list:
         imagenet_words_list = ['circle, round', 'line', 'triangle', 'square',
                                'parallel', 'parallelogram' ]
@@ -260,6 +259,32 @@ def imagenet_school_KG(classifier, imagenet_words_list=None):
     # RememberingMachine.caffinate_directory(os.path.abspath(os.path.join(valid_folders[0], os.path.pardir)))
     folder_learner(classifier, root_folder, task_name_prefix='Imagenet_KG_')
 
+
+def imagenet_school(classifier):
+    """
+    Calls imagenet class again and again with progressively tougher objects.
+    :param classifier: the willing learning classifier
+    :return:
+    """
+    # Class 0
+    imagenet_words_list_0 = ['circle, round', 'line', 'triangle', 'square',
+                           'parallel', 'parallelogram' ]
+    imagenet_class_KG(classifier, imagenet_words_list_0)
+
+    # Class 1
+    imagenet_words_list_1 = ['circle, round', 'line', 'triangle', 'square',
+                             'parallel', 'parallelogram' ]
+    imagenet_class_KG(classifier, imagenet_words_list_1)
+
+    # Class 2
+    imagenet_words_list_2 = ['circle, round', 'line', 'triangle', 'square',
+                             'parallel', 'parallelogram' ]
+    imagenet_class_KG(classifier, imagenet_words_list_0)
+
+    # Class 3
+    imagenet_words_list_3 = ['circle, round', 'line', 'triangle', 'square',
+                             'parallel', 'parallelogram' ]
+    imagenet_class_KG(classifier, imagenet_words_list_3)
 
 # ################## END imagenet ##################################################
 def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_ratio=2,
