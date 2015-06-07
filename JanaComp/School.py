@@ -11,6 +11,7 @@ import glob
 from random import shuffle
 import urllib
 import tarfile
+from RememberingMachine import meanie, dot_with_11
 
 
 def task_and(classifier):
@@ -322,6 +323,114 @@ def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         task_name = task_name_prefix + category_i
         classifier.fit(x_train, y_train, task_name)
+
+
+# Linear trainer
+def train_square(classifier):
+    # Task 1
+    # create a sample dataset. centred at 0,4 and 4,4. Normally distributed
+    # and variance 1. 100 samples and 2 dimension.
+    x_0 = np.random.randn(100,2) + np.array([-4,0])
+    x_1 = np.random.randn(100,2) + np.array([4,0])
+    y = np.array([0]*100 + [1]*100)
+    x_total = np.vstack([x_0, x_1])
+    classifier.fit(x_total, y, 'Task1: of -4,0 and 4,0')
+    classifier.visualize_clf(x_total, y)
+    # Task 2
+    x_0 = np.random.randn(100,2) + np.array([0,0])
+    x_1 = np.random.randn(100,2) + np.array([12,0])
+    y = np.array([0]*100 + [1]*100)
+    x_total = np.vstack([x_0, x_1])
+    classifier.fit(x_total, y, 'Task2: of 0,0 and 12,0')
+    classifier.visualize_clf(x_total, y)
+    # Task 3
+    # create a sample dataset. centred at 0,0 and 0,4. Normally distributed
+    # and variance 1. 100 samples and 2 dimension.
+    x_0 = np.random.randn(100,2) + np.array([0,-4])
+    x_1 = np.random.randn(100,2) + np.array([0,4])
+    y = np.array([0]*100 + [1]*100)
+    x_total = np.vstack([x_0, x_1])
+    classifier.fit(x_total, y, 'Task3: of 0,-4 and 0,4')
+    classifier.visualize_clf(x_total, y)
+    # Task 4
+    x_0 = np.random.randn(100,2) + np.array([0,0])
+    x_1 = np.random.randn(100,2) + np.array([0,12])
+    y = np.array([0]*100 + [1]*100)
+    x_total = np.vstack([x_0, x_1])
+    classifier.fit(x_total, y, 'Task4: of 0,0 and 0,12')
+    classifier.visualize_clf(x_total, y)
+    # Task 5, the square task.
+    x_0 = np.random.randn(100,2) + np.array([4, 4])
+    x_1 = np.random.randn(25,2) + np.array([-2, 4])
+    x_2 = np.random.randn(25,2) + np.array([4, 10])
+    x_3 = np.random.randn(25,2) + np.array([4,-2])
+    x_4 = np.random.randn(25,2) + np.array([10, 4])
+    x_5 = np.vstack([x_1, x_2, x_3, x_4])
+    y = np.array([0]*100 + [1]*100)
+    x_total = np.vstack([x_0, x_5])
+    classifier.fit(x_total, y, 'Task5: of far points and 4,4')
+    classifier.visualize_clf(x_total, y)
+
+
+def train_tri_band(classifier):
+    # Task 1
+    # create a sample dataset. centred at 0,4 and 4,4. Normally distributed
+    # and variance 1. 100 samples and 2 dimension.
+    x_0 = np.random.randn(100,2) + np.array([-4,0])
+    x_1 = np.random.randn(100,2) + np.array([4,0])
+    y = np.array([0]*100 + [1]*100)
+    x_total = np.vstack([x_0, x_1])
+    classifier.fit(x_total, y, 'Task1: of -4,0 and 4,0')
+    # classifier.visualize_clf(x_total, y)
+
+    # Task 2
+    x_0 = np.random.randn(100,2) + np.array([4,0])
+    x_1 = np.random.randn(100,2) + np.array([14,0])
+    y = np.array([1]*100 + [0]*100)
+    x_total = np.vstack([x_0, x_1])
+    classifier.fit(x_total, y, 'Task2: of 2,0 and 14,0')
+    # classifier.visualize_clf(x_total, y)
+
+    # Task 3, the tri band task.
+    x_0 = np.random.randn(100,2) + np.array([4, 0])
+    x_1 = np.random.randn(50,2) + np.array([-4, 0])
+    x_2 = np.random.randn(50,2) + np.array([14, 0])
+    x_5 = np.vstack([x_1, x_2])
+    y = np.array([0]*100 + [1]*100)
+    x_total = np.vstack([x_0, x_5])
+    classifier.fit(x_total, y, 'Task5: of far points and 4,0')
+    # classifier.visualize_clf(x_total, y)
+
+
+def random_linear_trainer(classifier, stages=10):
+    for stage_i in range(stages):
+        center_1 = np.random.randn(1,2)*10
+        center_2 = np.random.randn(1,2)*10
+        x_0 = np.random.randn(100,2) + center_1
+        x_1 = np.random.randn(100,2) + center_2
+        y = np.array([0]*100 + [1]*100)
+        x_total = np.vstack([x_0, x_1])
+        task_name = 'Random Linear ' + str(center_1) + ' and ' + str(center_2)
+        classifier.fit(x_total, y, task_name)
+        # classifier.visualize_clf(x_total, y)
+
+def random_linear_trainer2(classifier, stages=10):
+    for stage_i in range(stages):
+        center_1 = np.random.randn(1,2)*10
+        center_2 = np.random.randn(1,2)*10
+        center_3 = np.random.randn(1,2)*10
+        x_0 = np.random.randn(100,2) + center_1
+        x_1 = np.random.randn(50,2) + center_2
+        x_2 = np.random.randn(50,2) + center_3
+        x_5 = np.vstack([x_1, x_2])
+        y = np.array([0]*100 + [1]*100)
+        x_total = np.vstack([x_0, x_5])
+        task_name = 'Random Linear 2' + str(center_1) + \
+                    ' vs ' + str(center_2) + str(center_3)
+        classifier.fit(x_total, y, task_name)
+        if stage_i % 10 == 0:
+            classifier.visualize_clf(x_total, y)
+
 
 if __name__ == '__main__':
     pass
