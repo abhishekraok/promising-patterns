@@ -402,7 +402,7 @@ def train_tri_band(classifier):
     # classifier.visualize_clf(x_total, y)
 
 
-def random_linear_trainer(classifier, stages=10):
+def random_linear_trainer(classifier, stages=10, visualize=False):
     for stage_i in range(stages):
         center_1 = np.random.randn(1,2)*10
         center_2 = np.random.randn(1,2)*10
@@ -412,9 +412,10 @@ def random_linear_trainer(classifier, stages=10):
         x_total = np.vstack([x_0, x_1])
         task_name = 'Random Linear ' + str(center_1) + ' and ' + str(center_2)
         classifier.fit(x_total, y, task_name)
-        # classifier.visualize_clf(x_total, y)
+        if visualize:
+            classifier.visualize_clf(x_total, y)
 
-def random_linear_trainer2(classifier, stages=10):
+def random_linear_trainer2(classifier, stages=10, visualize=False):
     for stage_i in range(stages):
         center_1 = np.random.randn(1,2)*10
         center_2 = np.random.randn(1,2)*10
@@ -428,8 +429,29 @@ def random_linear_trainer2(classifier, stages=10):
         task_name = 'Random Linear 2' + str(center_1) + \
                     ' vs ' + str(center_2) + str(center_3)
         classifier.fit(x_total, y, task_name)
-        if stage_i % 10 == 0:
+        if stage_i % 10 == 0 and visualize:
             classifier.visualize_clf(x_total, y)
+
+def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_clusters=6):
+    # start with classifying two classes that have 3 clusters each.
+    for clusters_count in range(3, number_of_clusters, 1):
+        # repeat this many times at each cluster count.
+        for repetition_i in range(repeat_per_cluster):
+            centers_1 = np.random.randn(clusters_count+1, 2)*10
+            centers_2 = np.random.randn(clusters_count+1, 2)*10
+            x_0 = []  # points for class 0
+            x_1 = []  # points for class 1
+            for center_i in range(clusters_count + 1):
+                x_0.append(np.random.randn(100, 2) + centers_1[center_i, :])
+                x_1.append(np.random.randn(100, 2) + centers_2[center_i, :])
+            x_0_np = np.vstack(x_0)
+            x_1_np = np.vstack(x_1)
+            y = np.array([0]*x_0_np.shape[0] + [1]*x_1_np.shape[0])
+            x_total = np.vstack([x_0_np, x_1_np])
+            task_name = 'Growing complex trainer ' + str(clusters_count) + \
+                        ' rep ' + str(repetition_i)
+            classifier.fit(x_total, y, task_name)
+        classifier.visualize_clf(x_total, y)
 
 
 if __name__ == '__main__':

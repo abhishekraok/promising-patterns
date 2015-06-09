@@ -27,7 +27,7 @@ class ClassifierNode:
     """ A node that contains classifier, it's input address and output address.
     """
 
-    def __init__(self, end_in_address, out_address, classifier_name='Default',
+    def __init__(self, end_in_address, out_address, svm_C, classifier_name='Default',
                  given_predictor=None):
         self.out_address = out_address
         self.end_in_address = end_in_address  # end column
@@ -37,7 +37,7 @@ class ClassifierNode:
             self.given_predictor = given_predictor
             self.classifier_type = 'custom'
         else:
-            self.classifier = svm.LinearSVC(C=1, dual=False, penalty='l1')
+            self.classifier = svm.LinearSVC(C=svm_C, dual=False, penalty='l1')
             self.classifier_type = 'standard'
 
     def fit(self, x_in, y):
@@ -66,7 +66,7 @@ class RememberingVisualMachine:
     """ A machine which stores both input X and the current output of bunch of classifiers.
     API should be similar to scikit learn"""
 
-    def __init__(self, input_width):
+    def __init__(self, input_width, C=1):
         """
         Initialize this class.
 
@@ -74,6 +74,7 @@ class RememberingVisualMachine:
         :param input_width: maximum input dimension. 4096 for caffe features.
         :param front_end: a front end function that transforms the input to something else. e.g. a
             pre trained CNN. Any feature extractor.
+        :param C: the SVM penalty term
         :return: None
         """
         self.current_working_memory = np.zeros([1, input_width])
@@ -82,6 +83,7 @@ class RememberingVisualMachine:
         # also the width of the current working memory. Can grow.
         self.classifiers_list = []  # list of classifiers
         self.labels_list = []  # list of classifier names
+        self.param_svm_C = C
 
 
     def populate_working_memory(self, x_pred):
@@ -210,6 +212,7 @@ class RememberingVisualMachine:
         # instead of lavishly getting new ones, chinese restaurant?
         new_classifier = ClassifierNode(end_in_address=self.memory_width,
                                         out_address=[self.memory_width],
+                                        svm_C= self.param_svm_C,
                                         classifier_name=classifier_name)
         # Need to take care of mismatch in length of working memory and input samples.
         new_classifier.fit(self.current_working_memory, y)
@@ -238,12 +241,12 @@ class RememberingVisualMachine:
         self.memory_width += output_width
         self.classifiers_list.append(new_classifier)
 
-    def status(self, show_graph=False):
+    def status(self, show_graph=False, list_classifier_name=True):
         """Gives out the current status, like number of classifier and prints their values"""
         print 'Currently there are ', len(self.classifiers_list), ' classifiers. They are'
-        print [i.label for i in self.classifiers_list]
+        if list_classifier_name:
+            print [i.label for i in self.classifiers_list]
         classifiers_coefficients = np.zeros([len(self.classifiers_list), self.memory_width])
-        print self.labels_list
         for count, classifier_i in enumerate(self.classifiers_list):
             coeffs_i = classifier_i.classifier.coef_ \
                 if classifier_i.classifier_type == 'standard' else np.zeros([1, 1])
@@ -444,9 +447,11 @@ if __name__ == '__main__':
     print 'Loading complete.'
 
     # Main_C1.remove_classifier('task of far points and 4,4')
-    School.train_tri_band(Main_C1)
+    # School.train_tri_band(Main_C1)
     School.random_linear_trainer(Main_C1, stages=20)
     School.random_linear_trainer2(Main_C1, stages=20)
+    Main_C1.status(show_graph=True)
+    School.growing_complex_trainer(Main_C1)
     # Main_C1.visualize_clf(x_total, y)
     Main_C1.status(show_graph=True)
     # Main_C1.save(filename=classifier_file_name)
