@@ -12,7 +12,12 @@ from random import shuffle
 import urllib
 import tarfile
 from RememberingMachine import meanie, dot_with_11
+import string
 
+def convert_to_valid_pathname(filename):
+    validfilenamechars = "-_.()%s%s" % (string.ascii_letters, string.digits)
+    # cleanedfilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
+    return ''.join(c for c in filename if c in validfilenamechars)
 
 def task_and(classifier):
     # Task 1 noisy and
@@ -185,7 +190,7 @@ def mnist_school(classifier, samples_limit = 5123):
 
 
 # ################### Imagenet #########################################
-def download_imagenet_wnid(wnid, root_folder='./imagenet/'):
+def download_imagenet_wnid(wnid, actual_label, root_folder='./imagenet/'):
     """ Given a wnid download  it from Imagenet.
     :param wnid: string, imagenet wnid
     :return: path of folder created.
@@ -193,7 +198,8 @@ def download_imagenet_wnid(wnid, root_folder='./imagenet/'):
     if not os.path.exists(root_folder):
         os.makedirs(root_folder)
     # check if folder already exists
-    if not os.path.exists(root_folder + wnid):
+    created_folder = root_folder + wnid + '_' + convert_to_valid_pathname(actual_label)
+    if not os.path.exists(created_folder):
         username = 'abhishekraok'
         with open('accesskey.txt','r') as afile:
             accesskey = afile.read().strip()
@@ -212,11 +218,11 @@ def download_imagenet_wnid(wnid, root_folder='./imagenet/'):
         except tarfile.ReadError:
             print 'Error, could not open ', archive_file, ', skipping.'
             return None
-        os.makedirs(root_folder + wnid)
-        tar.extractall(path=root_folder+wnid+'/')
+        os.makedirs(created_folder)
+        tar.extractall(path=created_folder+'/')
         tar.close()
         os.remove(archive_file)
-        print 'Folder created wnid=', wnid
+        print 'Folder created name ', created_folder
     else:
         print 'Folder already exists'
     return os.path.abspath(root_folder + wnid)
@@ -245,20 +251,20 @@ def imagenet_class_KG(classifier, imagenet_words_list=None):
     """
     print 'Welcoem to Imagenet KG class'
     if not imagenet_words_list:
-        imagenet_words_list = ['circle, round', 'line', 'triangle', 'square',
-                               'parallel', 'parallelogram' ]
+        imagenet_words_list = ['circle, round', 'line', 'parallel']
     imagenet_dict = get_wornet_dict()
     wnid_list = [imagenet_dict[i] for i in imagenet_words_list]
     valid_folders = []
     root_folder = './imagenet/'
-    for wnid in wnid_list:
+    # list_remove = [(j,convert_to_valid_pathname(i)) for j,i in zip(wnid_list,imagenet_words_list)]
+    for actual_label, wnid in zip(imagenet_words_list, wnid_list):
         print 'Getting wnid', wnid
-        folder_i = download_imagenet_wnid(wnid, root_folder)
+        folder_i = download_imagenet_wnid(wnid, actual_label, root_folder)
         if folder_i:
             valid_folders.append(folder_i)
     # Caffinate it's parent directory
     # RememberingMachine.caffinate_directory(os.path.abspath(os.path.join(valid_folders[0], os.path.pardir)))
-    folder_learner(classifier, root_folder, task_name_prefix='Imagenet_KG_')
+    folder_learner(classifier, root_folder, task_name_prefix='Imagenet0_')
 
 
 def imagenet_school(classifier):
@@ -412,7 +418,7 @@ def random_linear_trainer(classifier, stages=10, visualize=False):
         x_total = np.vstack([x_0, x_1])
         task_name = 'Random Linear ' + str(center_1) + ' and ' + str(center_2)
         classifier.fit(x_total, y, task_name)
-        if visualize:
+        if visualize and stage_i % 5 == 0:
             classifier.visualize_clf(x_total, y)
 
 def random_linear_trainer2(classifier, stages=10, visualize=False):
@@ -429,7 +435,7 @@ def random_linear_trainer2(classifier, stages=10, visualize=False):
         task_name = 'Random Linear 2' + str(center_1) + \
                     ' vs ' + str(center_2) + str(center_3)
         classifier.fit(x_total, y, task_name)
-        if stage_i % 10 == 0 and visualize:
+        if stage_i % 5 == 0 and visualize:
             classifier.visualize_clf(x_total, y)
 
 def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_clusters=6):
@@ -452,6 +458,8 @@ def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_cluster
                         ' rep ' + str(repetition_i)
             classifier.fit(x_total, y, task_name)
         classifier.visualize_clf(x_total, y)
+        print 'Score is ', classifier.score(x_total, y)
+
 
 
 if __name__ == '__main__':

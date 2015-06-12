@@ -12,6 +12,7 @@ Next tasks: Generative model, given label, generate a sample
 
 Update: 24 May 2015. Added a method for generating a sample from any label.
 added methods to reflect, similar labels and daisy chain.
+
 """
 
 __author__ = 'Abhishek Rao'
@@ -36,6 +37,7 @@ caffe_root = '/home/student/ln_onedrive/code/promising-patterns/caffe/'  # this 
 sys.path.insert(0, caffe_root + 'python')
 import caffe
 import School
+import types
 
 
 # Classes
@@ -43,7 +45,7 @@ class ClassifierNode:
     """ A node that contains classifier, it's input address and output address.
     """
 
-    def __init__(self, end_in_address, out_address, classifier_name='Default',
+    def __init__(self, end_in_address, out_address, svm_c, classifier_name='Default',
                  given_predictor=None):
         self.out_address = out_address
         self.end_in_address = end_in_address  # end column
@@ -53,12 +55,19 @@ class ClassifierNode:
             self.given_predictor = given_predictor
             self.classifier_type = 'custom'
         else:
-            self.classifier = svm.LinearSVC(dual=False, penalty='l1')
+            self.classifier = svm.LinearSVC(C=svm_c, dual=False, penalty='l1')
             self.classifier_type = 'standard'
 
     def fit(self, x_in, y):
+        """
+        Fits the classifier and returns the score.
+        :param x_in:
+        :param y:
+        :return: float, score of fitted classifier.
+        """
         new_x_in = x_in[:, :self.end_in_address]
         self.classifier.fit(new_x_in, y)
+        return self.classifier.score(new_x_in, y)
 
     def predict(self, x_in):
         """
@@ -81,14 +90,13 @@ class RememberingVisualMachine:
     """ A machine which stores both input X and the current output of bunch of classifiers.
     API should be similar to scikit learn"""
 
-    def __init__(self, input_width):
+    def __init__(self, input_width, svm_c=1):
         """
         Initialize this class.
 
         :rtype : object self
         :param input_width: maximum input dimension. 4096 for caffe features.
-        :param front_end: a front end function that transforms the input to something else. e.g. a
-            pre trained CNN. Any feature extractor.
+        :param svm_c: the C for linear SVM
         :return: None
         """
         self.current_working_memory = np.zeros([1, input_width])
@@ -97,36 +105,26 @@ class RememberingVisualMachine:
         # also the width of the current working memory. Can grow.
         self.classifiers_list = []  # list of classifiers
         self.labels_list = []  # list of classifier names
+        self.svm_c = svm_c
 
-
-    def predict(self, predict_files_list):
-        """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
-
-        :param: predict_files_list: input files list, list of strings
-
-        :returns: tuple of array and string.
-            array is hard decision 1,0. String is the classifier class detected."""
-        x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
-                            for input_file in predict_files_list])
-        return self.predict_from_features(x_pred)
-
-
-    def predict_from_features(self, x_pred):
-        """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
-
-        :param: x_pred: input files list, list of strings
-
-        :returns: tuple of array and string.
-            array is hard decision 1,0. String is the classifier class detected."""
-        x_pred = np.array(x_pred,dtype=np.float)
+    def activate_working_memory(self, x_pred):
+        """
+        Given input, activate the previous predictors.
+        :param: x_pred: input 2d matrix.
+        :return: none
+        """
+        x_pred = np.array(x_pred, dtype=np.float)
+        x_pred = normalize(x_pred)
         if len(x_pred.shape) is not 2:
             print "Error in predict. Input dimension should be 2"
             raise ValueError
-        x_pred = normalize(x_pred)
+        # x_pred = normalize(x_pred, axis=0) # normalize feature wise
         input_number_samples, input_feature_dimension = x_pred.shape
         # Create a blank slate for working with.
         self.current_working_memory = np.zeros([input_number_samples, self.memory_width])
         self.current_working_memory[:input_number_samples, :input_feature_dimension] = x_pred
+        if len(self.classifiers_list) == 0:
+            return
         for classifier_i in self.classifiers_list:
             predicted_value = classifier_i.predict(self.current_working_memory[:input_number_samples, :])
             predicted_shape = predicted_value.shape
@@ -134,73 +132,40 @@ class RememberingVisualMachine:
                 predicted_value = predicted_value.reshape(-1, 1)
             predicted_shape = predicted_value.shape
             self.current_working_memory[:predicted_shape[0], classifier_i.out_address] = predicted_value
-        # Prediction scheme. Return the column in the classifier range (not input range) column with
-        # highest variance. Note: memory width is next available address, so -1.
-        prediction_range = self.current_working_memory[:input_number_samples,
-                               self.prediction_column_start:self.memory_width - 1]
-        # Which column to choose? Now we are selecting column that has hightest sum.
-        # Since decision function is signed distance from hyperplane, we want positives.
-        # if we square we will get negatives too.
-        prediction_energy = np.sum(prediction_range, axis=0)
-        chosen_column = np.argmax(prediction_energy)
-        soft_dec = prediction_range[:, chosen_column]
-        print 'Looks like images of ', self.labels_list[chosen_column], ' confidence = ', \
-            np.mean(np.square(soft_dec))
-        # Do hard decision, return only 1,0
-        return np.array(soft_dec > 0, dtype=np.int16),  prediction_energy
 
+    def fit(self, x_in, y, classifier_name='Default', relearn=False, save_classifier=False):
+        """ Adds a new classifier and trains it, similar to Scikit API
 
-    def similar_labels(self, label):
-        """
-        Generates a sample from label class and then sees which are most similar.
+        :param x_in: can either be a list of string, where strings are filepaths of images
+                or they can be a 2d numpy matrix.
+        :param predict_files_list: input files list, list of strings
+        :param relearn: if given same classifier name, whether to relearn.
+        :param save_classifier: should it write to memory the learnt classifier
 
-        :param label:
-        :return: 2 lists, first one labels list, second one confidence level for each.
-        """
-        generated_sample = self.generate_sample(label)
-        _, prediction_energy = self.predict_from_features(generated_sample)
-        # get the top ten active columns.
-        sorted_indices = np.argsort(prediction_energy)[-10:][::-1]
-        top_labels = np.array(self.labels_list)[sorted_indices]
-        # print 'top labels similar to ', label, ' are ', top_labels
-        # print 'their confidence levels are ', prediction_energy[sorted_indices]
-        return top_labels, prediction_energy[sorted_indices]
+        :returns: tuple of array and string.
+            array is hard decision 1,0. String is the classifier class detected."""
+        # check whether x_in is a files list or a numpy array
+        if isinstance(x_in, types.ListType):
+            # check for empty list
+            if not len(x_in):
+                print 'Hey man there is nothing in this task', classifier_name, ' returning.'
+                return
+            x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
+                                for input_file in x_in])
+        else:
+            # x_in is numpy matrix
+            x_pred = x_in
+        self.fit_from_caffe_features(x_pred, y, classifier_name, relearn, save_classifier)
 
-
-    def daisy_chain(self, starting_label, chain_length=20):
-        daisy_chain = [starting_label]
-        for i in range(chain_length):
-            returned_labels_list, _ = self.similar_labels(starting_label)
-            starting_label = [i for i in returned_labels_list if i not in daisy_chain][0]
-            daisy_chain.append(starting_label)
-        return daisy_chain
-
-
-    def fit(self, input_file_list, y, classifier_name='Default', relearn=False):
-        """
-        Adds a new classifier and trains it, similar to Scikit API
-
-        :type input_file_list: list
-        :param input_file_list: Input image files list
-        :param y:  labels
-        :param relearn: boolean, default False, if True if the label exists,
-            predicts and checks score. If it is low, relearns the task.
-        :return: None
-        """
-        # check for empty list
-        if not len(input_file_list):
-            print 'Hey man there is nothing in this task', classifier_name, ' returning.'
-            return
-        x_in = np.vstack([copy.copy(extract_caffe_features(input_file))
-                          for input_file in input_file_list])
-        self.fit_from_caffe_features(x_in, y, classifier_name, relearn)
-
-    def fit_from_caffe_features(self, x_in, y, classifier_name='Default', relearn=False):
+    def fit_from_caffe_features(self, x_in, y, classifier_name='Default', relearn=False,
+                                save_classifier=True):
         """
         Adds a new classifier and trains it, similar to Scikit API
 
         :param x_in:np.array 2d, rows = no.of samples, columns=features
         :param y:  labels
+        :param relearn: if given same classifier name, whether to relearn.
+        :param save_classifier: should it write to memory the learnt classifier
         :return: None
         """
         # caching classifiers. Check if one has to relearn. if yes
@@ -221,28 +186,22 @@ class RememberingVisualMachine:
             else:
                 print 'I wont bother learning again. Feeling lazy :P '
                 return
-        # Normalize
-        x_in = np.array(x_in, dtype=np.float)
-        x_in = normalize(x_in)
-        print 'Learning to recognize ', classifier_name, ' address will be ', self.memory_width
-        input_number_samples, input_feature_dimension = x_in.shape
-        if len(x_in.shape) is not 2:
-            print "Error in predict. Input dimension should be 2"
-            raise ValueError
-        self.current_working_memory = np.zeros([input_number_samples, self.memory_width])
-        self.current_working_memory[:, :x_in.shape[1]] = x_in
+        # activate all previous classifiers
+        self.activate_working_memory(x_in)
         # Procure a new classifier, this might be wasteful, later perhaps reuse classifier
         # instead of lavishly getting new ones, chinese restaurant?
         new_classifier = ClassifierNode(end_in_address=self.memory_width,
                                         out_address=[self.memory_width],
+                                        svm_c=self.svm_c,
                                         classifier_name=classifier_name)
         # Need to take care of mismatch in length of working memory and input samples.
         new_classifier.fit(self.current_working_memory, y)
         self.memory_width += 1
         # Update labels list
-        self.labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         self.classifiers_list.append(new_classifier)
-        self.save(filename=classifier_file_name)  # caching of classifiers.
+        self.labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
+        if save_classifier:
+            self.save(filename=classifier_file_name)  # caching of classifiers.
 
     def fit_custom_fx(self, custom_function, input_width, output_width, task_name):
         """
@@ -264,9 +223,13 @@ class RememberingVisualMachine:
         self.classifiers_list.append(new_classifier)
 
     def status(self, show_graph=False):
-        """Gives out the current status, like number of classifier and prints their values"""
+        """Gives out the current status, like number of classifier and prints their values
+
+        :return: float, sparsity value"""
+
         print 'Currently there are ', len(self.classifiers_list), ' classifiers. They are'
         classifiers_coefficients = np.zeros([len(self.classifiers_list), self.memory_width])
+        self.labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         print self.labels_list
         for count, classifier_i in enumerate(self.classifiers_list):
             coeffs_i = classifier_i.classifier.coef_ \
@@ -278,13 +241,94 @@ class RememberingVisualMachine:
             #    print 'In address', classifier_i.end_in_address
             # print 'Coefficients: ', classifier_i.classifier.coef_, classifier_i.classifier.intercept_
         if show_graph:
-            plt.imshow(self.current_working_memory[:200, self.prediction_column_start:
-                self.memory_width], interpolation='none', cmap='gray')
+            decimation_factor = int(self.current_working_memory.shape[0] / 40)
+            plt.figure()
+            plt.imshow(self.current_working_memory[::decimation_factor,
+                       self.prediction_column_start:
+                       self.memory_width], interpolation='none', cmap='gray')
             plt.title('Current working memory')
+            # Coefficients matrix plot
             plt.figure()
             plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
             plt.title('Classifier coefficients')
+            # Coefficients matrix plot, sparsity, thresholded.
             plt.show()
+            plt.figure()
+            classifiers_coefficients[classifiers_coefficients != 0] = 1
+            # The mean number of non zero coefficients, 2 because its triangular.
+            print 'Sparsity ratio is ', 2 * classifiers_coefficients.mean()
+            plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
+            plt.title('Sparsity of coefficients')
+            plt.show()
+            return 2 * classifiers_coefficients.mean()
+        return 0
+
+    def predict(self, x_in):
+        """Give out what it thinks from the input.
+
+        :param x_in: can either be a list of string, where strings are filepaths of images
+                or they can be a 2d numpy matrix.
+        :param: predict_files_list: input files list, list of strings
+
+        :returns: tuple of array and string.
+            array is hard decision 1,0. String is the classifier class detected."""
+        # check whether x_in is a files list or a numpy array
+        if os.path.isfile(x_in[0]):
+            # x_in is a files list
+            x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
+                                for input_file in x_in])
+        else:
+            # x_in is numpy matrix
+            x_pred = x_in
+        return self.predict_from_features(x_pred)
+
+    def predict_from_features(self, x_pred):
+        """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
+
+        :param: x_pred: input files list, list of strings
+
+        :returns: tuple of array and float.
+            array is hard decision 1,0. float is the confidence."""
+        input_number_samples, input_feature_dimension = x_pred.shape
+        self.activate_working_memory(x_pred)
+        # Prediction scheme. Return the column in the classifier range (not input range) column with
+        # highest variance. Note: memory width is next available address, so -1.
+        prediction_range = self.current_working_memory[:input_number_samples,
+                           self.prediction_column_start:self.memory_width - 1]
+        # Which column to choose? Now we are selecting column that has hightest sum.
+        # Since decision function is signed distance from hyperplane, we want positives.
+        # if we square we will get negatives too.
+        prediction_energy = np.sum(prediction_range, axis=0)
+        chosen_column = np.argmax(prediction_energy)
+        soft_dec = prediction_range[:, chosen_column]
+        print 'Looks like images of ', self.labels_list[chosen_column], ' confidence = ', \
+            np.mean(np.square(soft_dec))
+        # Do hard decision, return only 1,0
+        return np.array(soft_dec > 0, dtype=np.int16), prediction_energy
+
+    def similar_labels(self, label):
+        """
+        Generates a sample from label class and then sees which are most similar.
+
+        :param label:
+        :return: 2 lists, first one labels list, second one confidence level for each.
+        """
+        generated_sample = self.generate_sample(label)
+        _, prediction_energy = self.predict_from_features(generated_sample)
+        # get the top ten active columns.
+        sorted_indices = np.argsort(prediction_energy)[-10:][::-1]
+        top_labels = np.array(self.labels_list)[sorted_indices]
+        # print 'top labels similar to ', label, ' are ', top_labels
+        # print 'their confidence levels are ', prediction_energy[sorted_indices]
+        return top_labels, prediction_energy[sorted_indices]
+
+    def daisy_chain(self, starting_label, chain_length=20):
+        daisy_chain = [starting_label]
+        for i in range(chain_length):
+            returned_labels_list, _ = self.similar_labels(starting_label)
+            starting_label = [i for i in returned_labels_list if i not in daisy_chain][0]
+            daisy_chain.append(starting_label)
+        return daisy_chain
 
     def remove_classifier(self, classifier_name):
         """
@@ -304,7 +348,6 @@ class RememberingVisualMachine:
         self.labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
         return removing_index
 
-
     def generate_samples(self, labels_list):
         """
         Creates samples of the given classifier_name in working memory.
@@ -314,10 +357,9 @@ class RememberingVisualMachine:
         generated_samples = [self.generate_sample(label_i) for label_i in labels_list]
         widths = [i.shape[1] for i in generated_samples]
         generated_matrix = np.zeros([len(labels_list), max(widths)])
-        for i,sample_i in enumerate(generated_samples):
-            generated_matrix[i,:sample_i.shape[1]] = sample_i
+        for i, sample_i in enumerate(generated_samples):
+            generated_matrix[i, :sample_i.shape[1]] = sample_i
         return generated_matrix
-
 
     def generate_sample(self, classifier_name):
         """
@@ -334,12 +376,11 @@ class RememberingVisualMachine:
         coefficients = self.classifiers_list[classifier_index].classifier.coef_
         print 'Generating a sample of ', classifier_name
         max_coefficient = np.max(coefficients)
-        normalized_coefficients = coefficients/max_coefficient \
+        normalized_coefficients = coefficients / max_coefficient \
             if abs(max_coefficient) > 1e-4 else coefficients
-        return normalized_coefficients.reshape(1,-1)
+        return normalized_coefficients.reshape(1, -1)
 
-
-    def reflect(self, classifier_name, other_labels_length = 10):
+    def reflect(self, classifier_name, other_labels_length=10):
         """
         Given a label, generates it , an not it. And fits it again. Creates a new
         label called reflected_classifier_name
@@ -348,16 +389,15 @@ class RememberingVisualMachine:
         """
         print 'Reflecting on ', classifier_name
         generated_sample = self.generate_sample(classifier_name)
-        positive_train = np.vstack([generated_sample]*other_labels_length)
+        positive_train = np.vstack([generated_sample] * other_labels_length)
         other_labels = [label_i for label_i in self.labels_list if label_i is not classifier_name]
         shuffle(other_labels)
         other_labels = other_labels[:other_labels_length]
         other_samples = self.generate_samples(other_labels)
-        y = [1]*positive_train.shape[0] + [0]*other_samples.shape[0]
+        y = [1] * positive_train.shape[0] + [0] * other_samples.shape[0]
         # create a zeros matrix that is wide enough to hold both. Max of columns size
         X_train = np.zeros([len(y), max(other_samples.shape[1], positive_train.shape[1])])
-        self.fit_from_caffe_features(X_train, y, 'reflected_'+classifier_name)
-
+        self.fit_from_caffe_features(X_train, y, 'reflected_' + classifier_name)
 
     def score(self, input_x, y):
         """
@@ -373,7 +413,6 @@ class RememberingVisualMachine:
         else:
             yp_score, _ = self.predict_from_features(input_x)
             return f1_score(y, y_pred=yp_score)
-
 
     def generic_task(self, x_in, y, task_name):
         """
@@ -469,8 +508,8 @@ def extract_caffe_features(filename):
         caffe_net.forward()
         feat = caffe_net.blobs['fc7'].data[0]
         np.savetxt(cached_caffe_file, feat, delimiter=',')
-    max_feat =np.max(feat)
-    normalized_feat = feat/max_feat if abs(max_feat) > 1e-4 else feat
+    max_feat = np.max(feat)
+    normalized_feat = feat / max_feat if abs(max_feat) > 1e-4 else feat
     return normalized_feat
 
 
@@ -485,17 +524,18 @@ def caffe_directory(root_folder):
                   if os.path.isdir(os.path.join(root_folder, i))]
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     for category_i in categories:
-        caffe_file_name = root_folder+ '/' + category_i + '.caffe_feature.csv'
+        caffe_file_name = root_folder + '/' + category_i + '.caffe_feature.csv'
         # caching, check if file exist.
         if not os.path.isfile(caffe_file_name):
             files_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
             files_list.extend(glob.glob(root_folder + '/' + category_i + '/*.JPEG'))
             caffe_matrix = np.vstack([copy.copy(extract_caffe_features(input_file))
-                                for input_file in files_list])
+                                      for input_file in files_list])
             np.savetxt(caffe_file_name, caffe_matrix, delimiter=',')
             print 'Features extracted from folder ', category_i, ' shape is ', caffe_matrix.shape
         else:
             print 'Caffe feature file exists for ', category_i
+
 
 def caffinate_directory(root_folder):
     """
@@ -518,25 +558,20 @@ def caffinate_directory(root_folder):
 # Constants
 input_dimension = 4096
 
-
 if __name__ == '__main__':
     start_time = time.time()
-    learning_phase = False
     classifier_file_name = 'RememberingClassifier.pkl.gz'
     print 'Loading classifier file ...'
     if os.path.isfile(classifier_file_name):
-        Main_C1 = pickle.load(gzip.open(classifier_file_name, 'r'))
+        main_classifier = pickle.load(gzip.open(classifier_file_name, 'r'))
     else:
-        Main_C1 = RememberingVisualMachine(input_width=input_dimension)
+        main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=0.01)
     print 'Loading complete.'
-    if learning_phase:
-        School.caltech_101(Main_C1)
-        School.caltech_101_test(Main_C1, max_categories=10)
-    # School.mnist_school(Main_C1)
-    School.imagenet_school_KG(Main_C1)
-    Main_C1.status(show_graph=False)
-    # Main_C1.save(filename=classifier_file_name)
-    print 'Total time taken to run this program is ', round((time.time() - start_time)/60, ndigits=2), ' mins'
+    School.imagenet_class_KG(main_classifier)
+    main_classifier.status(show_graph=True)
+    main_classifier.save(filename=classifier_file_name)
+    print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
+
     # Scratch
     ##################################
     # Main_C1.remove_classifier('elephant')
