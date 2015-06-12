@@ -314,11 +314,13 @@ def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_
     for category_i in small_categories:
         positive_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
         positive_list.extend(glob.glob(root_folder + '/' + category_i + '/*.JPEG'))
+        positive_list.extend(glob.glob(root_folder + '/' + category_i + '/*.png'))
         negatives_list = []
         for other_category_i in categories:
             if other_category_i != category_i:
                 negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.jpg')
                 negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.JPEG')
+                negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.png')
         shuffle(negatives_list)
         positive_samples_count = len(positive_list)
         small_negative_list = negatives_list[:positive_samples_count * negatives_samples_ratio]
@@ -328,7 +330,11 @@ def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_
         y = [1]*len(positive_list) + [0]*len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         task_name = task_name_prefix + category_i
+        print 'Currently training category ', category_i, ' with number of samples = ', len(x_total)
         classifier.fit(x_train, y_train, task_name)
+        score = classifier.score(x_test, y_test)
+        print 'The test score for this task is ', score
+
 
 
 # Linear trainer
@@ -487,6 +493,62 @@ def amat_to_numpy(amat_file):
                 im.save(fp, 'png')
             count += 1
 
+def cifar_convert_folder(cifar_10_folder):
+    """
+    Once you download the cifar dataset from
+    http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+    and extract it, this converts it into a folder full of images.
+
+    :param cifar_10_folder: the folder where the above tar is extracted.
+    :return:
+    """
+    print 'processing cifar 10 data'
+
+    def unpickle_cifar(file):
+        import cPickle
+        fo = open(file, 'rb')
+        dict = cPickle.load(fo)
+        fo.close()
+        return dict
+
+    def dict2folder(in_dict, root_folder):
+        npdata = in_dict['data']
+        labels = in_dict['labels']
+        file_names = in_dict['filenames']
+        set_labels = set(labels)
+        for label_i in set_labels:
+            if not os.path.isdir(cifar_10_folder + str(label_i)):
+                os.makedirs(cifar_10_folder + str(label_i))
+        from PIL import Image
+        for i_data, i_label, i_file in zip(npdata, labels, file_names):
+            reshaped_image = i_data.reshape(3,32,32).T
+            pilim = Image.fromarray(reshaped_image)
+            with open(root_folder+ str(i_label) + '/' + i_file, 'w') as fp:
+                pilim.save(fp,'png')
+
+    file_list = os.listdir(cifar_10_folder)
+    dicts_list = [unpickle_cifar(i) for i in file_list[2:6]+file_list[7:]]
+    [dict2folder(i, cifar_10_folder) for i in dicts_list]
+    print 'Done.'
+
+def cifar_school(classifier):
+    """
+    Teach the classifier to identify cifar dataset.
+    :param classifier:  The classifier
+    :return:
+    """
+    cifar_10_folder = '/home/student/Downloads/cifar-10-batches-py/'
+    folder_learner(classifier, cifar_10_folder, task_name_prefix='cifar10_')
+
+def painting_school(classifier):
+    """
+    Teach the classifier to identify cifar dataset.
+    :param classifier:  The classifier
+    :return:
+    """
+    paintings_folder = '/home/student/Lpromising-patterns/paintings/data/two_class_full_size'
+    folder_learner(classifier, paintings_folder, task_name_prefix='wikipainting_')
+
 def go_to_all_schools(classifier):
     """
     Send to all schools availalble
@@ -494,13 +556,16 @@ def go_to_all_schools(classifier):
     :param classifier:
     :return:
     """
-    print 'The schools available are caltech_101 '
+    print 'The schools available are caltech_101 , cifar10, paintings'
+    imagenet_class_KG(classifier)
     caltech_101(classifier)
+    cifar_school(classifier)
+    painting_school(classifier)
 
 
 if __name__ == '__main__':
     pass
     # download_imagenet_wnid('n03032811')
-    amat_to_numpy('/home/student/Downloads/shapeset/shapeset1_1cs_2p_3o.5000.valid.amat')
+    # amat_to_numpy('/home/student/Downloads/shapeset/shapeset1_1cs_2p_3o.5000.valid.amat')
 
 

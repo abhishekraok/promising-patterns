@@ -608,9 +608,10 @@ if __name__ == '__main__':
     else:
         main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
     print 'Loading complete.'
-    School.caltech_101(main_classifier)
-    School.caltech_101_test(main_classifier)
+    # School.caltech_101(main_classifier)
+    # School.caltech_101_test(main_classifier)
     # main_classifier.explain_interdependencies()
+    School.cifar_school(main_classifier)
     main_classifier.status(show_graph=True)
     main_classifier.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
