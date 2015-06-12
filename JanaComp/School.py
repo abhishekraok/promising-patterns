@@ -549,6 +549,41 @@ def painting_school(classifier):
     paintings_folder = '/home/student/Lpromising-patterns/paintings/data/two_class_full_size'
     folder_learner(classifier, paintings_folder, task_name_prefix='wikipainting_')
 
+def bing_learner(classifier, words_list, download_folder='bing_images'):
+    """
+    Given a list of words, download it from bing and learn to classify
+
+    :param classifier:
+    :param words_list:
+    :return:
+    """
+    for word_i in words_list:
+        get_images_bing(word_i, root_folder=download_folder)
+    folder_learner(classifier, root_folder=download_folder, task_name_prefix='bingl_')
+
+def get_images_bing(query, root_foler='bing_images'):
+    print 'Getting images of ', query, ' from bing.'
+    from bs4 import BeautifulSoup
+    import requests
+    import re
+    import urllib2
+    import os
+    if not os.path.isdir(root_foler):
+        os.makedirs(root_foler)
+    image_type = query
+    url = "http://www.bing.com/images/search?q=" + query + \
+        "&qft=+filterui:color2-bw+filterui:imagesize-large&FORM=R5IR3"
+    soup = BeautifulSoup(requests.get(url).text)
+    images = [a['src'] for a in soup.find_all("img", {"src": re.compile("mm.bing.net")})]
+    images += [a['src2'] for a in soup.find_all("img", {"src2": re.compile("mm.bing.net")})]
+    for img in images:
+        raw_img = urllib2.urlopen(img).read()
+        cntr = len([i for i in os.listdir("images") if image_type in i]) + 1
+        f = open(root_foler + "/" + image_type + "_"+ str(cntr) + ".jpg", 'wb')
+        f.write(raw_img)
+        f.close()
+    print 'Saved ', len(images), ' images '
+
 def go_to_all_schools(classifier):
     """
     Send to all schools availalble
@@ -558,6 +593,8 @@ def go_to_all_schools(classifier):
     """
     print 'The schools available are caltech_101 , cifar10, paintings'
     imagenet_class_KG(classifier)
+    bing_word_list = ['square', 'rectangle', 'dark', 'light', 'colorful', 'smooth', 'rough']
+    bing_learner(classifier, words_list=bing_word_list)
     caltech_101(classifier)
     cifar_school(classifier)
     painting_school(classifier)
@@ -567,5 +604,4 @@ if __name__ == '__main__':
     pass
     # download_imagenet_wnid('n03032811')
     # amat_to_numpy('/home/student/Downloads/shapeset/shapeset1_1cs_2p_3o.5000.valid.amat')
-
 
