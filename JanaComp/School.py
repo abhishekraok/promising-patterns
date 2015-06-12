@@ -11,8 +11,13 @@ import glob
 from random import shuffle
 import urllib
 import tarfile
-from RememberingMachine import meanie, dot_with_11
+# from RememberingMachine import meanie, dot_with_11
+import string
 
+def convert_to_valid_pathname(filename):
+    validfilenamechars = "-_.()%s%s" % (string.ascii_letters, string.digits)
+    # cleanedfilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
+    return ''.join(c for c in filename if c in validfilenamechars)
 
 def task_and(classifier):
     # Task 1 noisy and
@@ -185,7 +190,7 @@ def mnist_school(classifier, samples_limit = 5123):
 
 
 # ################### Imagenet #########################################
-def download_imagenet_wnid(wnid, root_folder='./imagenet/'):
+def download_imagenet_wnid(wnid, actual_label, root_folder='./imagenet/'):
     """ Given a wnid download  it from Imagenet.
     :param wnid: string, imagenet wnid
     :return: path of folder created.
@@ -193,7 +198,8 @@ def download_imagenet_wnid(wnid, root_folder='./imagenet/'):
     if not os.path.exists(root_folder):
         os.makedirs(root_folder)
     # check if folder already exists
-    if not os.path.exists(root_folder + wnid):
+    created_folder = root_folder + wnid + '_' + convert_to_valid_pathname(actual_label)
+    if not os.path.exists(created_folder):
         username = 'abhishekraok'
         with open('accesskey.txt','r') as afile:
             accesskey = afile.read().strip()
@@ -212,11 +218,11 @@ def download_imagenet_wnid(wnid, root_folder='./imagenet/'):
         except tarfile.ReadError:
             print 'Error, could not open ', archive_file, ', skipping.'
             return None
-        os.makedirs(root_folder + wnid)
-        tar.extractall(path=root_folder+wnid+'/')
+        os.makedirs(created_folder)
+        tar.extractall(path=created_folder+'/')
         tar.close()
         os.remove(archive_file)
-        print 'Folder created wnid=', wnid
+        print 'Folder created name ', created_folder
     else:
         print 'Folder already exists'
     return os.path.abspath(root_folder + wnid)
@@ -245,20 +251,20 @@ def imagenet_class_KG(classifier, imagenet_words_list=None):
     """
     print 'Welcoem to Imagenet KG class'
     if not imagenet_words_list:
-        imagenet_words_list = ['circle, round', 'line', 'triangle', 'square',
-                               'parallel', 'parallelogram' ]
+        imagenet_words_list = ['circle, round', 'line', 'parallel']
     imagenet_dict = get_wornet_dict()
     wnid_list = [imagenet_dict[i] for i in imagenet_words_list]
     valid_folders = []
     root_folder = './imagenet/'
-    for wnid in wnid_list:
+    # list_remove = [(j,convert_to_valid_pathname(i)) for j,i in zip(wnid_list,imagenet_words_list)]
+    for actual_label, wnid in zip(imagenet_words_list, wnid_list):
         print 'Getting wnid', wnid
-        folder_i = download_imagenet_wnid(wnid, root_folder)
+        folder_i = download_imagenet_wnid(wnid, actual_label, root_folder)
         if folder_i:
             valid_folders.append(folder_i)
     # Caffinate it's parent directory
     # RememberingMachine.caffinate_directory(os.path.abspath(os.path.join(valid_folders[0], os.path.pardir)))
-    folder_learner(classifier, root_folder, task_name_prefix='Imagenet_KG_')
+    folder_learner(classifier, root_folder, task_name_prefix='Imagenet0_')
 
 
 def imagenet_school(classifier):
@@ -308,11 +314,13 @@ def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_
     for category_i in small_categories:
         positive_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
         positive_list.extend(glob.glob(root_folder + '/' + category_i + '/*.JPEG'))
+        positive_list.extend(glob.glob(root_folder + '/' + category_i + '/*.png'))
         negatives_list = []
         for other_category_i in categories:
             if other_category_i != category_i:
                 negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.jpg')
                 negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.JPEG')
+                negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.png')
         shuffle(negatives_list)
         positive_samples_count = len(positive_list)
         small_negative_list = negatives_list[:positive_samples_count * negatives_samples_ratio]
@@ -322,7 +330,11 @@ def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_
         y = [1]*len(positive_list) + [0]*len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         task_name = task_name_prefix + category_i
+        print 'Currently training category ', category_i, ' with number of samples = ', len(x_total)
         classifier.fit(x_train, y_train, task_name)
+        score = classifier.score(x_test, y_test)
+        print 'The test score for this task is ', score
+
 
 
 # Linear trainer
@@ -412,7 +424,7 @@ def random_linear_trainer(classifier, stages=10, visualize=False):
         x_total = np.vstack([x_0, x_1])
         task_name = 'Random Linear ' + str(center_1) + ' and ' + str(center_2)
         classifier.fit(x_total, y, task_name)
-        if visualize:
+        if visualize and stage_i % 5 == 0:
             classifier.visualize_clf(x_total, y)
 
 def random_linear_trainer2(classifier, stages=10, visualize=False):
@@ -429,7 +441,7 @@ def random_linear_trainer2(classifier, stages=10, visualize=False):
         task_name = 'Random Linear 2' + str(center_1) + \
                     ' vs ' + str(center_2) + str(center_3)
         classifier.fit(x_total, y, task_name)
-        if stage_i % 10 == 0 and visualize:
+        if stage_i % 5 == 0 and visualize:
             classifier.visualize_clf(x_total, y)
 
 def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_clusters=6):
@@ -452,10 +464,108 @@ def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_cluster
                         ' rep ' + str(repetition_i)
             classifier.fit(x_total, y, task_name)
         classifier.visualize_clf(x_total, y)
+        print 'Score is ', classifier.score(x_total, y)
+
+# baby AI
+def amat_to_numpy(amat_file):
+    from PIL import Image
+    folder_name = amat_file[:-11] + '_real'
+    if not os.path.isdir(folder_name):
+        os.makedirs(folder_name)
+    if not os.path.isdir(folder_name + '/rectangle'):
+        os.makedirs(folder_name + '/rectangle')
+        os.makedirs(folder_name + '/ellipse')
+        os.makedirs(folder_name + '/triangle')
+    shapes = ['rectangle', 'ellipse', 'triangle']
+    with open(amat_file, 'r') as fp:
+        amat_data = fp.read()
+        in_lines = amat_data.split('\n')
+        count = 0
+        for line_i in in_lines[1:-1]:
+            chars = line_i.split(' ')
+            fs = [256*float(i) for i in chars[:1024]]
+            im = Image.new('L', (32,32))
+            im = im.putdata(fs)
+            shape_i = shapes[int(chars[1024])]
+            file_name = folder_name + '/' + shape_i + '/' + \
+                        str(count) + '.png'
+            with open(file_name, 'w') as fp:
+                im.save(fp, 'png')
+            count += 1
+
+def cifar_convert_folder(cifar_10_folder):
+    """
+    Once you download the cifar dataset from
+    http://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+    and extract it, this converts it into a folder full of images.
+
+    :param cifar_10_folder: the folder where the above tar is extracted.
+    :return:
+    """
+    print 'processing cifar 10 data'
+
+    def unpickle_cifar(file):
+        import cPickle
+        fo = open(file, 'rb')
+        dict = cPickle.load(fo)
+        fo.close()
+        return dict
+
+    def dict2folder(in_dict, root_folder):
+        npdata = in_dict['data']
+        labels = in_dict['labels']
+        file_names = in_dict['filenames']
+        set_labels = set(labels)
+        for label_i in set_labels:
+            if not os.path.isdir(cifar_10_folder + str(label_i)):
+                os.makedirs(cifar_10_folder + str(label_i))
+        from PIL import Image
+        for i_data, i_label, i_file in zip(npdata, labels, file_names):
+            reshaped_image = i_data.reshape(3,32,32).T
+            pilim = Image.fromarray(reshaped_image)
+            with open(root_folder+ str(i_label) + '/' + i_file, 'w') as fp:
+                pilim.save(fp,'png')
+
+    file_list = os.listdir(cifar_10_folder)
+    dicts_list = [unpickle_cifar(i) for i in file_list[2:6]+file_list[7:]]
+    [dict2folder(i, cifar_10_folder) for i in dicts_list]
+    print 'Done.'
+
+def cifar_school(classifier):
+    """
+    Teach the classifier to identify cifar dataset.
+    :param classifier:  The classifier
+    :return:
+    """
+    cifar_10_folder = '/home/student/Downloads/cifar-10-batches-py/'
+    folder_learner(classifier, cifar_10_folder, task_name_prefix='cifar10_')
+
+def painting_school(classifier):
+    """
+    Teach the classifier to identify cifar dataset.
+    :param classifier:  The classifier
+    :return:
+    """
+    paintings_folder = '/home/student/Lpromising-patterns/paintings/data/two_class_full_size'
+    folder_learner(classifier, paintings_folder, task_name_prefix='wikipainting_')
+
+def go_to_all_schools(classifier):
+    """
+    Send to all schools availalble
+
+    :param classifier:
+    :return:
+    """
+    print 'The schools available are caltech_101 , cifar10, paintings'
+    imagenet_class_KG(classifier)
+    caltech_101(classifier)
+    cifar_school(classifier)
+    painting_school(classifier)
 
 
 if __name__ == '__main__':
     pass
     # download_imagenet_wnid('n03032811')
+    # amat_to_numpy('/home/student/Downloads/shapeset/shapeset1_1cs_2p_3o.5000.valid.amat')
 
 
