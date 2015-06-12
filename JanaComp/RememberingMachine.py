@@ -82,8 +82,8 @@ class ClassifierNode:
             dec_fx_in = self.given_predictor(new_x_in)
         # Convert it into mapping between 0 to 1 instead of -1 to 1
         # Sigmoid required? Think I'll remove it.
-        # return np.array([sigmoid_10(i) for i in dec_fx_in])
-        return dec_fx_in
+        return np.array([sigmoid(i) for i in dec_fx_in])
+        # return dec_fx_in
 
 
 class RememberingVisualMachine:
@@ -195,7 +195,8 @@ class RememberingVisualMachine:
                                         svm_c=self.svm_c,
                                         classifier_name=classifier_name)
         # Need to take care of mismatch in length of working memory and input samples.
-        new_classifier.fit(self.current_working_memory, y)
+        fit_score = new_classifier.fit(self.current_working_memory, y)
+        print 'Fitting score for classifier ', classifier_name, ' is ', fit_score
         self.memory_width += 1
         # Update labels list
         self.classifiers_list.append(new_classifier)
@@ -241,7 +242,7 @@ class RememberingVisualMachine:
             #    print 'In address', classifier_i.end_in_address
             # print 'Coefficients: ', classifier_i.classifier.coef_, classifier_i.classifier.intercept_
         if show_graph:
-            decimation_factor = int(self.current_working_memory.shape[0] / 40)
+            decimation_factor = int(self.current_working_memory.shape[0] / 40) + 1
             plt.figure()
             plt.imshow(self.current_working_memory[::decimation_factor,
                        self.prediction_column_start:
@@ -251,14 +252,19 @@ class RememberingVisualMachine:
             plt.figure()
             plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
             plt.title('Classifier coefficients')
-            # Coefficients matrix plot, sparsity, thresholded.
+            plt.figure()
+            plt.imshow(classifiers_coefficients[:, self.prediction_column_start:], interpolation='none', cmap='gray')
+            plt.title('Classifier interdependency')
             plt.show()
+
+            # Coefficients matrix plot, sparsity, thresholded.
             plt.figure()
             classifiers_coefficients[classifiers_coefficients != 0] = 1
             # The mean number of non zero coefficients, 2 because its triangular.
             print 'Sparsity ratio is ', 2 * classifiers_coefficients.mean()
             plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
             plt.title('Sparsity of coefficients')
+            # classifier interdependency.
             plt.show()
             return 2 * classifiers_coefficients.mean()
         return 0
@@ -294,7 +300,7 @@ class RememberingVisualMachine:
         # Prediction scheme. Return the column in the classifier range (not input range) column with
         # highest variance. Note: memory width is next available address, so -1.
         prediction_range = self.current_working_memory[:input_number_samples,
-                           self.prediction_column_start:self.memory_width - 1]
+                           self.prediction_column_start:self.memory_width]
         # Which column to choose? Now we are selecting column that has hightest sum.
         # Since decision function is signed distance from hyperplane, we want positives.
         # if we square we will get negatives too.
@@ -304,7 +310,7 @@ class RememberingVisualMachine:
         print 'Looks like images of ', self.labels_list[chosen_column], ' confidence = ', \
             np.mean(np.square(soft_dec))
         # Do hard decision, return only 1,0
-        return np.array(soft_dec > 0, dtype=np.int16), prediction_energy
+        return np.array(soft_dec > 0.5, dtype=np.int16), prediction_energy
 
     def similar_labels(self, label):
         """
@@ -407,7 +413,7 @@ class RememberingVisualMachine:
         :return: float, between 0 to 1
         """
         # check whether input is file_list or 2d array
-        if input_x[0] is str:
+        if isinstance(input_x, types.ListType):
             yp_score, _ = self.predict(input_x)
             return f1_score(y, y_pred=yp_score)
         else:
@@ -442,11 +448,46 @@ class RememberingVisualMachine:
         else:
             print 'No duplicates found.'
 
+    def explain_interdependencies(self, max_tell=10):
+        """ Using classifier in the list, explain which looks like what?
+        """
+        labels_list = self.labels_list
+        classifiers_coefficients = np.zeros([len(self.classifiers_list), self.memory_width])
+        for count, classifier_i in enumerate(self.classifiers_list):
+            coeffs_i = classifier_i.classifier.coef_ \
+                if classifier_i.classifier_type == 'standard' else np.zeros([1, 1])
+            classifiers_coefficients[count, :coeffs_i.shape[1]] = coeffs_i
+        interdependency_matrix = classifiers_coefficients[:, self.prediction_column_start:]
+        print 'Now look at this interdependency matrix'
+        plt.figure()
+        plt.imshow(interdependency_matrix, interpolation='none', cmap='gray')
+        plt.title('Interdependency matrix')
+        plt.show()
+        # get top 10 indices
+        flattened_indices = np.argsort(interdependency_matrix, axis=None)[-10:]
+        x_co_ords, y_co_ords = np.unravel_index(flattened_indices, interdependency_matrix.shape)
+        for x_i, y_i in zip(x_co_ords, y_co_ords):
+            print labels_list[x_i], ' looks like ', labels_list[y_i]
+            # flattened_index = np.argmax(interdependency_matrix)
+            # coords = np.unravel_index()
+        # max_indices = np.argmax(interdependency_matrix, axis=1)
+        # pick max_tell of max
+        # for category_i in max_indices[:max_tell]:
+        #     top_similarities = np.argmax(interdependency_matrix[category_i])
+        #     sentence = 'The ' + labels_list[category_i] + ' looks like '
+        #     valid = False
+        #     for similar_i in top_similarities:
+        #         if interdependency_matrix[category_i, similar_i] > 0.1:
+        #             sentence += labels_list[similar_i]
+        #             valid = True
+        #     if valid:
+        #         print sentence
+
 
 # Global functions
 # Reason for having 10 sigmoid is to get sharper distinction.
-def sigmoid_10(x):
-    return 1 / (1 + math.exp(-10 * x))
+def sigmoid(x):
+    return 1 / (1 + math.exp(-1 * x))
 
 
 # Following are required for custom functions Task 1,2
@@ -565,9 +606,11 @@ if __name__ == '__main__':
     if os.path.isfile(classifier_file_name):
         main_classifier = pickle.load(gzip.open(classifier_file_name, 'r'))
     else:
-        main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=0.01)
+        main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
     print 'Loading complete.'
-    School.imagenet_class_KG(main_classifier)
+    School.caltech_101(main_classifier)
+    School.caltech_101_test(main_classifier)
+    # main_classifier.explain_interdependencies()
     main_classifier.status(show_graph=True)
     main_classifier.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'

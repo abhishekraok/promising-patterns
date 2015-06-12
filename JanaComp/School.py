@@ -11,7 +11,7 @@ import glob
 from random import shuffle
 import urllib
 import tarfile
-from RememberingMachine import meanie, dot_with_11
+# from RememberingMachine import meanie, dot_with_11
 import string
 
 def convert_to_valid_pathname(filename):
@@ -460,10 +460,47 @@ def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_cluster
         classifier.visualize_clf(x_total, y)
         print 'Score is ', classifier.score(x_total, y)
 
+# baby AI
+def amat_to_numpy(amat_file):
+    from PIL import Image
+    folder_name = amat_file[:-11] + '_real'
+    if not os.path.isdir(folder_name):
+        os.makedirs(folder_name)
+    if not os.path.isdir(folder_name + '/rectangle'):
+        os.makedirs(folder_name + '/rectangle')
+        os.makedirs(folder_name + '/ellipse')
+        os.makedirs(folder_name + '/triangle')
+    shapes = ['rectangle', 'ellipse', 'triangle']
+    with open(amat_file, 'r') as fp:
+        amat_data = fp.read()
+        in_lines = amat_data.split('\n')
+        count = 0
+        for line_i in in_lines[1:-1]:
+            chars = line_i.split(' ')
+            fs = [256*float(i) for i in chars[:1024]]
+            im = Image.new('L', (32,32))
+            im = im.putdata(fs)
+            shape_i = shapes[int(chars[1024])]
+            file_name = folder_name + '/' + shape_i + '/' + \
+                        str(count) + '.png'
+            with open(file_name, 'w') as fp:
+                im.save(fp, 'png')
+            count += 1
+
+def go_to_all_schools(classifier):
+    """
+    Send to all schools availalble
+
+    :param classifier:
+    :return:
+    """
+    print 'The schools available are caltech_101 '
+    caltech_101(classifier)
 
 
 if __name__ == '__main__':
     pass
     # download_imagenet_wnid('n03032811')
+    amat_to_numpy('/home/student/Downloads/shapeset/shapeset1_1cs_2p_3o.5000.valid.amat')
 
 
