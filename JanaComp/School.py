@@ -14,10 +14,12 @@ import tarfile
 # from RememberingMachine import meanie, dot_with_11
 import string
 
+
 def convert_to_valid_pathname(filename):
     validfilenamechars = "-_.()%s%s" % (string.ascii_letters, string.digits)
     # cleanedfilename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
     return ''.join(c for c in filename if c in validfilenamechars)
+
 
 def task_and(classifier):
     # Task 1 noisy and
@@ -119,10 +121,11 @@ def caltech_101(classifier, negatives_samples_ratio=2, max_categories=None):
         positive_samples_count = len(positive_list)
         small_negative_list = negatives_list[:positive_samples_count * negatives_samples_ratio]
         x_total = positive_list + small_negative_list
-        y = [1]*len(positive_list) + [0]*len(small_negative_list)
+        y = [1] * len(positive_list) + [0] * len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         task_name = 'CalTech101_' + category_i
         classifier.fit(x_train, y_train, task_name)
+
 
 def caltech_101_test(classifier, max_categories=None):
     """
@@ -146,9 +149,9 @@ def caltech_101_test(classifier, max_categories=None):
                 negatives_list += glob.glob(root + '/' + other_category_i + '/*.jpg')
         shuffle(negatives_list)
         positive_samples_count = len(positive_list)
-        small_negative_list = negatives_list[:positive_samples_count *2]
+        small_negative_list = negatives_list[:positive_samples_count * 2]
         x_total = positive_list + small_negative_list
-        y = [1]*len(positive_list) + [0]*len(small_negative_list)
+        y = [1] * len(positive_list) + [0] * len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         score = classifier.score(x_test, y_test)
         print 'In the category ', category_i, ' F1 score is ', score
@@ -157,16 +160,17 @@ def caltech_101_test(classifier, max_categories=None):
     print 'The mean F1 score among all the classes is ', np.mean(score_sheet)
     return np.mean(score_sheet)
 
-def mnist_school(classifier, samples_limit = 5123):
+
+def mnist_school(classifier, samples_limit=5123):
     # Raw training, no caffe use.
     print 'MNIST training started.'
-    mnist_file ='/home/student/Downloads/MNIST/train-images.idx3-ubyte'
+    mnist_file = '/home/student/Downloads/MNIST/train-images.idx3-ubyte'
     if os.path.isfile(mnist_file):
         train_arr = idx2numpy.convert_from_file(mnist_file)
     else:
         print 'Error, no file'
         return
-    print 'Train array loaded, size is ',train_arr.shape
+    print 'Train array loaded, size is ', train_arr.shape
     label_file = '/home/student/Downloads/MNIST/train-labels.idx1-ubyte'
     label_arr = idx2numpy.convert_from_file(label_file)
     print 'Train labels loaded, size is ', label_arr.shape
@@ -174,7 +178,7 @@ def mnist_school(classifier, samples_limit = 5123):
     # Train for each digit
     for digit_i in digits:
         # binarize
-        y = 1*(label_arr==digit_i)[:samples_limit]
+        y = 1 * (label_arr == digit_i)[:samples_limit]
         x_train = np.vstack([i.flatten() for i in train_arr[:samples_limit]])
         classifier.fit_from_caffe_features(x_train, y, 'MNIST_' + str(digit_i))
     print 'MNIST training done.'
@@ -183,7 +187,7 @@ def mnist_school(classifier, samples_limit = 5123):
     scores = []
     for digit_i in digits:
         # binarize
-        y = 1*(label_arr==digit_i)[-1000:]
+        y = 1 * (label_arr == digit_i)[-1000:]
         x_train = np.vstack([i.flatten() for i in train_arr[-1000:]])
         scores.append(classifier.score(x_train, y))
     print 'The mean score for MNIST Task is ', np.mean(scores)
@@ -201,15 +205,15 @@ def download_imagenet_wnid(wnid, actual_label, root_folder='./imagenet/'):
     created_folder = root_folder + wnid + '_' + convert_to_valid_pathname(actual_label)
     if not os.path.exists(created_folder):
         username = 'abhishekraok'
-        with open('accesskey.txt','r') as afile:
+        with open('accesskey.txt', 'r') as afile:
             accesskey = afile.read().strip()
         url = 'http://www.image-net.org/download/synset?wnid=' + wnid + \
               '&username=' + username + '&accesskey=' + accesskey + '&release=latest&src=stanford'
         print 'Url to download is ', url
         # Check if file is already downloaded
-        archive_file = root_folder + wnid+'.tar'
+        archive_file = root_folder + wnid + '.tar'
         if not os.path.exists(archive_file):
-            urllib.urlretrieve(url, archive_file )
+            urllib.urlretrieve(url, archive_file)
         else:
             print 'Archive file already exists.'
         print 'extracting..'
@@ -219,7 +223,7 @@ def download_imagenet_wnid(wnid, actual_label, root_folder='./imagenet/'):
             print 'Error, could not open ', archive_file, ', skipping.'
             return None
         os.makedirs(created_folder)
-        tar.extractall(path=created_folder+'/')
+        tar.extractall(path=created_folder + '/')
         tar.close()
         os.remove(archive_file)
         print 'Folder created name ', created_folder
@@ -237,6 +241,7 @@ def get_wornet_dict():
     with open('./imagenet/words.txt') as wordfile:
         imagenet_word_list = wordfile.read()
     return dict([i.split('\t')[::-1] for i in imagenet_word_list.split('\n')])
+
 
 def imagenet_class_KG(classifier, imagenet_words_list=None):
     """
@@ -275,33 +280,44 @@ def imagenet_school(classifier):
     """
     # Class 0
     imagenet_words_list_0 = ['circle, round', 'line', 'triangle', 'square',
-                           'parallel', 'parallelogram' ]
+                             'parallel', 'parallelogram']
     imagenet_class_KG(classifier, imagenet_words_list_0)
 
     # Class 1
     imagenet_words_list_1 = ['circle, round', 'line', 'triangle', 'square',
-                             'parallel', 'parallelogram' ]
+                             'parallel', 'parallelogram']
     imagenet_class_KG(classifier, imagenet_words_list_1)
 
     # Class 2
     imagenet_words_list_2 = ['circle, round', 'line', 'triangle', 'square',
-                             'parallel', 'parallelogram' ]
+                             'parallel', 'parallelogram']
     imagenet_class_KG(classifier, imagenet_words_list_0)
 
     # Class 3
     imagenet_words_list_3 = ['circle, round', 'line', 'triangle', 'square',
-                             'parallel', 'parallelogram' ]
+                             'parallel', 'parallelogram']
     imagenet_class_KG(classifier, imagenet_words_list_3)
+
 
 # ################## END imagenet ##################################################
 def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_ratio=2,
-                   max_categories=None):
+                   max_categories=None, use_background=False, max_samples_per_cat=None,
+                   remembering_threshold=1.1, feedback_remember=False):
     """
     :param classifier: A classifer that has fit function.
     :param root_folder: directory which contains many classes
     :param task_name_prefix: Name of the task to add to all, string
     :param negatives_samples_ratio: amount of negative samples to use.
     :param max_categories: maximum amount of categories to load.
+    :param use_background: boolean, default True, if False, won't use the google background
+        images to extend negatives list.
+    :param max_samples_per_cat: maximum number of samples to load in positive class. Default
+        None, which means all.
+    :param remembering_threshold: applies when feedback_remember is True.
+        the F1 score above which to save the classifier. By default
+        this value is 1.1 meaning it wont save no matter what. A value less that zero will always
+        save. 0.8 would save only if it's sure.
+    :param feedback_remember: boolean, default False. If true saves or reload based on score.
     :return:
     """
     print 'Folder training started with folder ', root_folder
@@ -311,29 +327,50 @@ def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_
     small_categories = categories[:max_categories] if max_categories is not None else categories
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     # The negatives also consist of a background images folder.
+    all_score = []
     for category_i in small_categories:
         positive_list = glob.glob(root_folder + '/' + category_i + '/*.jpg')
         positive_list.extend(glob.glob(root_folder + '/' + category_i + '/*.JPEG'))
         positive_list.extend(glob.glob(root_folder + '/' + category_i + '/*.png'))
+        # limit number of samples.
+        if max_samples_per_cat:
+            positive_list = positive_list[:max_samples_per_cat]
+            predicted_1s = np.zeros((len(small_categories), max_samples_per_cat))
+        positive_samples_count = len(positive_list)
         negatives_list = []
         for other_category_i in categories:
             if other_category_i != category_i:
                 negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.jpg')
                 negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.JPEG')
                 negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.png')
+                # no then it will only load the first few negatives always.
+                # if len(negatives_list) > positive_samples_count * negatives_samples_ratio:
+                #     break  # enough negatives collected.
         shuffle(negatives_list)
-        positive_samples_count = len(positive_list)
         small_negative_list = negatives_list[:positive_samples_count * negatives_samples_ratio]
-        small_negative_list.extend(glob.glob(
-            '/home/student/Downloads/101_ObjectCategories/BACKGROUND_Google' + '/*.jpg'))
+        if use_background:
+            small_negative_list.extend(glob.glob(
+                '/home/student/Downloads/101_ObjectCategories/BACKGROUND_Google' + '/*.jpg'))
         x_total = positive_list + small_negative_list
-        y = [1]*len(positive_list) + [0]*len(small_negative_list)
+        y = [1] * len(positive_list) + [0] * len(small_negative_list)
         x_train, x_test, y_train, y_test = train_test_split(x_total, y)
         task_name = task_name_prefix + category_i
         print 'Currently training category ', category_i, ' with number of samples = ', len(x_total)
         classifier.fit(x_train, y_train, task_name)
         score = classifier.score(x_test, y_test)
         print 'The test score for this task is ', score
+        all_score.append(score)
+        if feedback_remember:
+            if score > remembering_threshold:
+                print 'This task was learn well. Classifier shall remember.'
+                classifier.save()
+                # else:
+                #     # forget it, can't differentiate well
+                #     classifier.remove(task_name)
+            else:
+                print ' :( classifier doesn\'t understand this task at all. Forget it. Reload'
+                classifier.reload()
+    print 'The mean F1 score (unweighted) is ', np.mean(all_score)
 
 
 
@@ -342,43 +379,43 @@ def train_square(classifier):
     # Task 1
     # create a sample dataset. centred at 0,4 and 4,4. Normally distributed
     # and variance 1. 100 samples and 2 dimension.
-    x_0 = np.random.randn(100,2) + np.array([-4,0])
-    x_1 = np.random.randn(100,2) + np.array([4,0])
-    y = np.array([0]*100 + [1]*100)
+    x_0 = np.random.randn(100, 2) + np.array([-4, 0])
+    x_1 = np.random.randn(100, 2) + np.array([4, 0])
+    y = np.array([0] * 100 + [1] * 100)
     x_total = np.vstack([x_0, x_1])
     classifier.fit(x_total, y, 'Task1: of -4,0 and 4,0')
     classifier.visualize_clf(x_total, y)
     # Task 2
-    x_0 = np.random.randn(100,2) + np.array([0,0])
-    x_1 = np.random.randn(100,2) + np.array([12,0])
-    y = np.array([0]*100 + [1]*100)
+    x_0 = np.random.randn(100, 2) + np.array([0, 0])
+    x_1 = np.random.randn(100, 2) + np.array([12, 0])
+    y = np.array([0] * 100 + [1] * 100)
     x_total = np.vstack([x_0, x_1])
     classifier.fit(x_total, y, 'Task2: of 0,0 and 12,0')
     classifier.visualize_clf(x_total, y)
     # Task 3
     # create a sample dataset. centred at 0,0 and 0,4. Normally distributed
     # and variance 1. 100 samples and 2 dimension.
-    x_0 = np.random.randn(100,2) + np.array([0,-4])
-    x_1 = np.random.randn(100,2) + np.array([0,4])
-    y = np.array([0]*100 + [1]*100)
+    x_0 = np.random.randn(100, 2) + np.array([0, -4])
+    x_1 = np.random.randn(100, 2) + np.array([0, 4])
+    y = np.array([0] * 100 + [1] * 100)
     x_total = np.vstack([x_0, x_1])
     classifier.fit(x_total, y, 'Task3: of 0,-4 and 0,4')
     classifier.visualize_clf(x_total, y)
     # Task 4
-    x_0 = np.random.randn(100,2) + np.array([0,0])
-    x_1 = np.random.randn(100,2) + np.array([0,12])
-    y = np.array([0]*100 + [1]*100)
+    x_0 = np.random.randn(100, 2) + np.array([0, 0])
+    x_1 = np.random.randn(100, 2) + np.array([0, 12])
+    y = np.array([0] * 100 + [1] * 100)
     x_total = np.vstack([x_0, x_1])
     classifier.fit(x_total, y, 'Task4: of 0,0 and 0,12')
     classifier.visualize_clf(x_total, y)
     # Task 5, the square task.
-    x_0 = np.random.randn(100,2) + np.array([4, 4])
-    x_1 = np.random.randn(25,2) + np.array([-2, 4])
-    x_2 = np.random.randn(25,2) + np.array([4, 10])
-    x_3 = np.random.randn(25,2) + np.array([4,-2])
-    x_4 = np.random.randn(25,2) + np.array([10, 4])
+    x_0 = np.random.randn(100, 2) + np.array([4, 4])
+    x_1 = np.random.randn(25, 2) + np.array([-2, 4])
+    x_2 = np.random.randn(25, 2) + np.array([4, 10])
+    x_3 = np.random.randn(25, 2) + np.array([4, -2])
+    x_4 = np.random.randn(25, 2) + np.array([10, 4])
     x_5 = np.vstack([x_1, x_2, x_3, x_4])
-    y = np.array([0]*100 + [1]*100)
+    y = np.array([0] * 100 + [1] * 100)
     x_total = np.vstack([x_0, x_5])
     classifier.fit(x_total, y, 'Task5: of far points and 4,4')
     classifier.visualize_clf(x_total, y)
@@ -388,27 +425,27 @@ def train_tri_band(classifier):
     # Task 1
     # create a sample dataset. centred at 0,4 and 4,4. Normally distributed
     # and variance 1. 100 samples and 2 dimension.
-    x_0 = np.random.randn(100,2) + np.array([-4,0])
-    x_1 = np.random.randn(100,2) + np.array([4,0])
-    y = np.array([0]*100 + [1]*100)
+    x_0 = np.random.randn(100, 2) + np.array([-4, 0])
+    x_1 = np.random.randn(100, 2) + np.array([4, 0])
+    y = np.array([0] * 100 + [1] * 100)
     x_total = np.vstack([x_0, x_1])
     classifier.fit(x_total, y, 'Task1: of -4,0 and 4,0')
     # classifier.visualize_clf(x_total, y)
 
     # Task 2
-    x_0 = np.random.randn(100,2) + np.array([4,0])
-    x_1 = np.random.randn(100,2) + np.array([14,0])
-    y = np.array([1]*100 + [0]*100)
+    x_0 = np.random.randn(100, 2) + np.array([4, 0])
+    x_1 = np.random.randn(100, 2) + np.array([14, 0])
+    y = np.array([1] * 100 + [0] * 100)
     x_total = np.vstack([x_0, x_1])
     classifier.fit(x_total, y, 'Task2: of 2,0 and 14,0')
     # classifier.visualize_clf(x_total, y)
 
     # Task 3, the tri band task.
-    x_0 = np.random.randn(100,2) + np.array([4, 0])
-    x_1 = np.random.randn(50,2) + np.array([-4, 0])
-    x_2 = np.random.randn(50,2) + np.array([14, 0])
+    x_0 = np.random.randn(100, 2) + np.array([4, 0])
+    x_1 = np.random.randn(50, 2) + np.array([-4, 0])
+    x_2 = np.random.randn(50, 2) + np.array([14, 0])
     x_5 = np.vstack([x_1, x_2])
-    y = np.array([0]*100 + [1]*100)
+    y = np.array([0] * 100 + [1] * 100)
     x_total = np.vstack([x_0, x_5])
     classifier.fit(x_total, y, 'Task5: of far points and 4,0')
     # classifier.visualize_clf(x_total, y)
@@ -416,27 +453,28 @@ def train_tri_band(classifier):
 
 def random_linear_trainer(classifier, stages=10, visualize=False):
     for stage_i in range(stages):
-        center_1 = np.random.randn(1,2)*10
-        center_2 = np.random.randn(1,2)*10
-        x_0 = np.random.randn(100,2) + center_1
-        x_1 = np.random.randn(100,2) + center_2
-        y = np.array([0]*100 + [1]*100)
+        center_1 = np.random.randn(1, 2) * 10
+        center_2 = np.random.randn(1, 2) * 10
+        x_0 = np.random.randn(100, 2) + center_1
+        x_1 = np.random.randn(100, 2) + center_2
+        y = np.array([0] * 100 + [1] * 100)
         x_total = np.vstack([x_0, x_1])
         task_name = 'Random Linear ' + str(center_1) + ' and ' + str(center_2)
         classifier.fit(x_total, y, task_name)
         if visualize and stage_i % 5 == 0:
             classifier.visualize_clf(x_total, y)
 
+
 def random_linear_trainer2(classifier, stages=10, visualize=False):
     for stage_i in range(stages):
-        center_1 = np.random.randn(1,2)*10
-        center_2 = np.random.randn(1,2)*10
-        center_3 = np.random.randn(1,2)*10
-        x_0 = np.random.randn(100,2) + center_1
-        x_1 = np.random.randn(50,2) + center_2
-        x_2 = np.random.randn(50,2) + center_3
+        center_1 = np.random.randn(1, 2) * 10
+        center_2 = np.random.randn(1, 2) * 10
+        center_3 = np.random.randn(1, 2) * 10
+        x_0 = np.random.randn(100, 2) + center_1
+        x_1 = np.random.randn(50, 2) + center_2
+        x_2 = np.random.randn(50, 2) + center_3
         x_5 = np.vstack([x_1, x_2])
-        y = np.array([0]*100 + [1]*100)
+        y = np.array([0] * 100 + [1] * 100)
         x_total = np.vstack([x_0, x_5])
         task_name = 'Random Linear 2' + str(center_1) + \
                     ' vs ' + str(center_2) + str(center_3)
@@ -444,13 +482,14 @@ def random_linear_trainer2(classifier, stages=10, visualize=False):
         if stage_i % 5 == 0 and visualize:
             classifier.visualize_clf(x_total, y)
 
+
 def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_clusters=6):
     # start with classifying two classes that have 3 clusters each.
     for clusters_count in range(3, number_of_clusters, 1):
         # repeat this many times at each cluster count.
         for repetition_i in range(repeat_per_cluster):
-            centers_1 = np.random.randn(clusters_count+1, 2)*10
-            centers_2 = np.random.randn(clusters_count+1, 2)*10
+            centers_1 = np.random.randn(clusters_count + 1, 2) * 10
+            centers_2 = np.random.randn(clusters_count + 1, 2) * 10
             x_0 = []  # points for class 0
             x_1 = []  # points for class 1
             for center_i in range(clusters_count + 1):
@@ -458,7 +497,7 @@ def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_cluster
                 x_1.append(np.random.randn(100, 2) + centers_2[center_i, :])
             x_0_np = np.vstack(x_0)
             x_1_np = np.vstack(x_1)
-            y = np.array([0]*x_0_np.shape[0] + [1]*x_1_np.shape[0])
+            y = np.array([0] * x_0_np.shape[0] + [1] * x_1_np.shape[0])
             x_total = np.vstack([x_0_np, x_1_np])
             task_name = 'Growing complex trainer ' + str(clusters_count) + \
                         ' rep ' + str(repetition_i)
@@ -466,9 +505,11 @@ def growing_complex_trainer(classifier, repeat_per_cluster=10, number_of_cluster
         classifier.visualize_clf(x_total, y)
         print 'Score is ', classifier.score(x_total, y)
 
+
 # baby AI
 def amat_to_numpy(amat_file):
     from PIL import Image
+
     folder_name = amat_file[:-11] + '_real'
     if not os.path.isdir(folder_name):
         os.makedirs(folder_name)
@@ -483,8 +524,8 @@ def amat_to_numpy(amat_file):
         count = 0
         for line_i in in_lines[1:-1]:
             chars = line_i.split(' ')
-            fs = [256*float(i) for i in chars[:1024]]
-            im = Image.new('L', (32,32))
+            fs = [256 * float(i) for i in chars[:1024]]
+            im = Image.new('L', (32, 32))
             im = im.putdata(fs)
             shape_i = shapes[int(chars[1024])]
             file_name = folder_name + '/' + shape_i + '/' + \
@@ -492,6 +533,7 @@ def amat_to_numpy(amat_file):
             with open(file_name, 'w') as fp:
                 im.save(fp, 'png')
             count += 1
+
 
 def cifar_convert_folder(cifar_10_folder):
     """
@@ -506,6 +548,7 @@ def cifar_convert_folder(cifar_10_folder):
 
     def unpickle_cifar(file):
         import cPickle
+
         fo = open(file, 'rb')
         dict = cPickle.load(fo)
         fo.close()
@@ -520,16 +563,18 @@ def cifar_convert_folder(cifar_10_folder):
             if not os.path.isdir(cifar_10_folder + str(label_i)):
                 os.makedirs(cifar_10_folder + str(label_i))
         from PIL import Image
+
         for i_data, i_label, i_file in zip(npdata, labels, file_names):
-            reshaped_image = i_data.reshape(3,32,32).T
+            reshaped_image = i_data.reshape(3, 32, 32).T
             pilim = Image.fromarray(reshaped_image)
-            with open(root_folder+ str(i_label) + '/' + i_file, 'w') as fp:
-                pilim.save(fp,'png')
+            with open(root_folder + str(i_label) + '/' + i_file, 'w') as fp:
+                pilim.save(fp, 'png')
 
     file_list = os.listdir(cifar_10_folder)
-    dicts_list = [unpickle_cifar(i) for i in file_list[2:6]+file_list[7:]]
+    dicts_list = [unpickle_cifar(i) for i in file_list[2:6] + file_list[7:]]
     [dict2folder(i, cifar_10_folder) for i in dicts_list]
     print 'Done.'
+
 
 def cifar_school(classifier):
     """
@@ -540,16 +585,64 @@ def cifar_school(classifier):
     cifar_10_folder = '/home/student/Downloads/cifar-10-batches-py/'
     folder_learner(classifier, cifar_10_folder, task_name_prefix='cifar10_')
 
-def painting_school(classifier):
+
+def painting_school(classifier, max_samples_per_cat):
     """
     Teach the classifier to identify cifar dataset.
     :param classifier:  The classifier
+    :param max_samples_per_cat: maximum number of samples to load in positive class. Default
+        None, which means all.
     :return:
     """
     paintings_folder = '/home/student/Lpromising-patterns/paintings/data/two_class_full_size'
-    folder_learner(classifier, paintings_folder, task_name_prefix='wikipainting_')
+    folder_learner(classifier, paintings_folder, task_name_prefix='wikipainting_',
+                   use_background=False, max_samples_per_cat=max_samples_per_cat)
 
-def bing_learner(classifier, words_list, download_folder='bing_images'):
+
+def paint_experiment(classifier, data_dir=None, max_train_samples=None):
+    """
+    Perform multiclass classification on the folder.
+
+    :param classifier: any scikit style classifier
+    :param data_dir:  the path of data where each class images are in a separate folder.
+    :return: prints classification report.
+    """
+    # load data
+    if not data_dir:
+        data_dir = '/home/student/ln_onedrive/code/promising-patterns/paintings/data/two_class_full_size/'
+    classes = [i for i in os.listdir(data_dir) if os.path.isdir(data_dir + i)]
+    print 'Getting data from ', os.path.abspath(data_dir)
+    print 'The classes are ', classes
+    folder_labels = []  # indicates which class it belongs to
+    x_files = []
+    for class_count, class_name in enumerate(classes):  # For each genre
+        current_genre_file_list = glob.glob(data_dir + class_name + '/*.jpg')  # List all the filenames
+        x_files.extend(current_genre_file_list)
+        folder_labels.extend([class_count] * len(current_genre_file_list))
+    x_train, x_test, y_train, y_test = train_test_split(x_files, folder_labels)
+    if max_train_samples:
+        x_train = x_train[:max_train_samples]
+        y_train = y_train[:max_train_samples]
+    print 'There are ', len(x_train), ' training samples. Starting classification...'
+
+    # multiclass classification begin
+    y_pred = [0] * len(y_test)
+    from sklearn.metrics import classification_report
+    for class_count, class_name in enumerate(classes):  # For each genre
+        # convert from 1...N into binary for each class
+        y_current_train = 1*[i == class_count for i in y_train]
+        classifier.fit(x_train, y_current_train, 'paintings_' + class_name)
+        y_current_pred = classifier.predict(x_test)
+        y_current_test = 1*[i == class_count for i in y_test]
+        print(classification_report(y_current_test, y_current_pred, target_names=['rest', class_name]))
+        # current from binary into 1..N
+        for i in range(len(y_current_test)):
+            if y_current_pred[i]:
+                y_pred[i] = class_count
+    print(classification_report(y_test, y_pred, target_names=classes))
+
+
+def bing_learner(classifier, words_list=None, download_folder='bing_images', feedback_remember=True):
     """
     Given a list of words, download it from bing and learn to classify
 
@@ -557,32 +650,41 @@ def bing_learner(classifier, words_list, download_folder='bing_images'):
     :param words_list:
     :return:
     """
+    words_list = ['points', 'zigzag', 'spherical', 'ellipse', 'square', 'rectangle', 'colorful',
+                  'smooth', 'rough', 'many', 'sparse', 'plain'] if words_list is None else words_list
     for word_i in words_list:
         get_images_bing(word_i, root_folder=download_folder)
-    folder_learner(classifier, root_folder=download_folder, task_name_prefix='bingl_')
+    folder_learner(classifier, root_folder=download_folder, task_name_prefix='bingl_', remembering_threshold=0.8,
+                   feedback_remember=feedback_remember)
 
-def get_images_bing(query, root_foler='bing_images'):
+
+def get_images_bing(query, root_folder='bing_images'):
     print 'Getting images of ', query, ' from bing.'
     from bs4 import BeautifulSoup
     import requests
     import re
     import urllib2
     import os
-    if not os.path.isdir(root_foler):
-        os.makedirs(root_foler)
-    image_type = query
+
+    if not os.path.isdir(root_folder):
+        os.makedirs(root_folder)
     url = "http://www.bing.com/images/search?q=" + query + \
-        "&qft=+filterui:color2-bw+filterui:imagesize-large&FORM=R5IR3"
+          "&qft=+filterui:color2-bw+filterui:imagesize-large&FORM=R5IR3"
     soup = BeautifulSoup(requests.get(url).text)
     images = [a['src'] for a in soup.find_all("img", {"src": re.compile("mm.bing.net")})]
     images += [a['src2'] for a in soup.find_all("img", {"src2": re.compile("mm.bing.net")})]
-    for img in images:
-        raw_img = urllib2.urlopen(img).read()
-        cntr = len([i for i in os.listdir("images") if image_type in i]) + 1
-        f = open(root_foler + "/" + image_type + "_"+ str(cntr) + ".jpg", 'wb')
-        f.write(raw_img)
-        f.close()
-    print 'Saved ', len(images), ' images '
+    current_folder = root_folder + '/' + query
+    if not os.path.isdir(current_folder):
+        os.makedirs(current_folder)
+        for i, img in enumerate(images):
+            raw_img = urllib2.urlopen(img).read()
+            f = open(current_folder + "/" + str(i) + ".jpg", 'wb')
+            f.write(raw_img)
+            f.close()
+        print 'Saved ', len(images), ' images '
+    else:
+        print 'The folder ', current_folder, ' already exist, not doing anything.'
+
 
 def go_to_all_schools(classifier):
     """
@@ -593,8 +695,7 @@ def go_to_all_schools(classifier):
     """
     print 'The schools available are caltech_101 , cifar10, paintings'
     imagenet_class_KG(classifier)
-    bing_word_list = ['square', 'rectangle', 'dark', 'light', 'colorful', 'smooth', 'rough']
-    bing_learner(classifier, words_list=bing_word_list)
+    bing_learner(classifier)
     caltech_101(classifier)
     cifar_school(classifier)
     painting_school(classifier)
@@ -604,4 +705,3 @@ if __name__ == '__main__':
     pass
     # download_imagenet_wnid('n03032811')
     # amat_to_numpy('/home/student/Downloads/shapeset/shapeset1_1cs_2p_3o.5000.valid.amat')
-

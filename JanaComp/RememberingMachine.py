@@ -13,6 +13,12 @@ Next tasks: Generative model, given label, generate a sample
 Update: 24 May 2015. Added a method for generating a sample from any label.
 added methods to reflect, similar labels and daisy chain.
 
+Update: 13 June 2015.
+Todos
+Consolidate folder learner and paint experiment.  Difference is
+paint experiment takes all together.
+Train a feedback online learner. Where if the score is good you save
+else you reload.
 """
 
 __author__ = 'Abhishek Rao'
@@ -150,6 +156,7 @@ class RememberingVisualMachine:
             if not len(x_in):
                 print 'Hey man there is nothing in this task', classifier_name, ' returning.'
                 return
+            print 'Extracting caffe features for ', classifier_name
             x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
                                 for input_file in x_in])
         else:
@@ -187,6 +194,7 @@ class RememberingVisualMachine:
                 print 'I wont bother learning again. Feeling lazy :P '
                 return
         # activate all previous classifiers
+        print 'Started fitting for task ', classifier_name, ' with x shape ', x_in.shape
         self.activate_working_memory(x_in)
         # Procure a new classifier, this might be wasteful, later perhaps reuse classifier
         # instead of lavishly getting new ones, chinese restaurant?
@@ -269,13 +277,15 @@ class RememberingVisualMachine:
             return 2 * classifiers_coefficients.mean()
         return 0
 
-    def predict(self, x_in):
+    def predict(self, x_in, task_name=-1):
         """Give out what it thinks from the input.
 
+        if task name is not specified, gives out the prediction for last classifier.
         :param x_in: can either be a list of string, where strings are filepaths of images
                 or they can be a 2d numpy matrix.
         :param: predict_files_list: input files list, list of strings
-
+        :param task_name: string, choose which classifier name to predict.
+            default, last classifier.
         :returns: tuple of array and string.
             array is hard decision 1,0. String is the classifier class detected."""
         # check whether x_in is a files list or a numpy array
@@ -286,12 +296,15 @@ class RememberingVisualMachine:
         else:
             # x_in is numpy matrix
             x_pred = x_in
-        return self.predict_from_features(x_pred)
+        return self.predict_from_features(x_pred, task_name)
 
-    def predict_from_features(self, x_pred):
+    def predict_from_features(self, x_pred, task_name=-1):
         """Give out what it thinks from the input. Input x_pred should be 2 dimensional.
 
+        if task name is not specified, gives out the prediction for last classifier.
         :param: x_pred: input files list, list of strings
+        :param task_name: string, choose which classifier name to predict.
+            default, last classifier.
 
         :returns: tuple of array and float.
             array is hard decision 1,0. float is the confidence."""
@@ -304,13 +317,22 @@ class RememberingVisualMachine:
         # Which column to choose? Now we are selecting column that has hightest sum.
         # Since decision function is signed distance from hyperplane, we want positives.
         # if we square we will get negatives too.
-        prediction_energy = np.sum(prediction_range, axis=0)
-        chosen_column = np.argmax(prediction_energy)
+        # prediction_energy = np.sum(prediction_range, axis=0)
+        # chosen_column = np.argmax(prediction_energy)
+        # new strategy, choose the last column.
+        if task_name is -1:
+            chosen_column = -1
+        else:
+            try:
+                chosen_column = self.labels_list.index(task_name)
+            except ValueError:
+                print 'The specified label does not exist.'
+                return -1
         soft_dec = prediction_range[:, chosen_column]
-        print 'Looks like images of ', self.labels_list[chosen_column], ' confidence = ', \
-            np.mean(np.square(soft_dec))
+        # print 'Looks like images of ', self.labels_list[chosen_column], ' confidence = ', \
+        #     np.mean(np.square(soft_dec))
         # Do hard decision, return only 1,0
-        return np.array(soft_dec > 0.5, dtype=np.int16), prediction_energy
+        return np.array(soft_dec > 0.5, dtype=np.int16)
 
     def similar_labels(self, label):
         """
@@ -414,10 +436,10 @@ class RememberingVisualMachine:
         """
         # check whether input is file_list or 2d array
         if isinstance(input_x, types.ListType):
-            yp_score, _ = self.predict(input_x)
+            yp_score = self.predict(input_x)
             return f1_score(y, y_pred=yp_score)
         else:
-            yp_score, _ = self.predict_from_features(input_x)
+            yp_score = self.predict_from_features(input_x)
             return f1_score(y, y_pred=yp_score)
 
     def generic_task(self, x_in, y, task_name):
@@ -427,12 +449,16 @@ class RememberingVisualMachine:
         self.fit(x_in, y, classifier_name=task_name)
         print 'The score for task ', task_name, ' is ', self.score(x_in, y)
 
-    def save(self, filename="RememberingClassifier.pkl"):
+    def save(self, filename="RememberingClassifier.pkl.gz"):
         """
         Pickle thyself.
         """
         pickle.dump(self, gzip.open(filename, 'w'))
         print 'Remembering Machine saved.'
+
+    def reload(self, filename='RememberingClassifier.pkl.gz.'):
+        self = pickle.load(gzip.open(filename, 'r'))
+
 
     def remove_duplicates(self):
         print 'removing duplicates'
@@ -611,9 +637,12 @@ if __name__ == '__main__':
     # School.caltech_101(main_classifier)
     # School.caltech_101_test(main_classifier)
     # main_classifier.explain_interdependencies()
-    School.cifar_school(main_classifier)
-    main_classifier.status(show_graph=True)
-    main_classifier.save(filename=classifier_file_name)
+    # School.cifar_school(main_classifier)
+    # School.painting_school(main_classifier, 100)
+    # School.bing_learner(main_classifier)
+    School.paint_experiment(main_classifier, max_train_samples=None)
+    # main_classifier.status(show_graph=True)
+    # main_classifier.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
 
     # Scratch
