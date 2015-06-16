@@ -56,6 +56,7 @@ class ClassifierNode:
         self.out_address = out_address
         self.end_in_address = end_in_address  # end column
         self.label = classifier_name  # The name of this concept. e.g. like apple etc.
+        self.confidence = 0  # the confidence in the classification ability for this label
         # Check whether to create a standard classifier or a custom, given one.
         if given_predictor:
             self.given_predictor = given_predictor
@@ -73,7 +74,8 @@ class ClassifierNode:
         """
         new_x_in = x_in[:, :self.end_in_address]
         self.classifier.fit(new_x_in, y)
-        return self.classifier.score(new_x_in, y)
+        self.confidence = self.classifier.score(new_x_in, y)
+        return self.confidence
 
     def predict(self, x_in):
         """
@@ -456,7 +458,7 @@ class RememberingVisualMachine:
         pickle.dump(self, gzip.open(filename, 'w'))
         print 'Remembering Machine saved.'
 
-    def reload(self, filename='RememberingClassifier.pkl.gz.'):
+    def reload(self, filename='RememberingClassifier.pkl.gz'):
         self = pickle.load(gzip.open(filename, 'r'))
 
 
@@ -474,7 +476,7 @@ class RememberingVisualMachine:
         else:
             print 'No duplicates found.'
 
-    def explain_interdependencies(self, max_tell=10):
+    def explain_interdependencies(self, max_tell=10, label=None):
         """ Using classifier in the list, explain which looks like what?
         """
         labels_list = self.labels_list
@@ -489,11 +491,23 @@ class RememberingVisualMachine:
         plt.imshow(interdependency_matrix, interpolation='none', cmap='gray')
         plt.title('Interdependency matrix')
         plt.show()
-        # get top 10 indices
-        flattened_indices = np.argsort(interdependency_matrix, axis=None)[-10:]
-        x_co_ords, y_co_ords = np.unravel_index(flattened_indices, interdependency_matrix.shape)
+        # get top max_tell indices
+        if label:
+            try:
+                y_co_ord_single = self.labels_list.index(label)
+            except ValueError:
+                print 'The specified label does not exist.'
+                return
+            x_co_ords = np.argsort(np.abs(interdependency_matrix[y_co_ord_signle]))[:-max_tell:]
+            y_co_ords = np.repeat(y_co_ord_single, *x_co_ords.shape[0])
+        else:
+            flattened_indices = np.argsort(np.abs(interdependency_matrix), axis=None)[-max_tell:]
+            x_co_ords, y_co_ords = np.unravel_index(flattened_indices, interdependency_matrix.shape)
         for x_i, y_i in zip(x_co_ords, y_co_ords):
-            print labels_list[x_i], ' looks like ', labels_list[y_i]
+            if interdependency_matrix[x_i][y_i] > 0:
+                print labels_list[x_i], ' looks like ', labels_list[y_i]
+            else:
+                print labels_list[x_i], ' does not look like ', labels_list[y_i]
             # flattened_index = np.argmax(interdependency_matrix)
             # coords = np.unravel_index()
         # max_indices = np.argmax(interdependency_matrix, axis=1)
@@ -636,11 +650,16 @@ if __name__ == '__main__':
     print 'Loading complete.'
     # School.caltech_101(main_classifier)
     # School.caltech_101_test(main_classifier)
-    # main_classifier.explain_interdependencies()
+    main_classifier.explain_interdependencies(30)
     # School.cifar_school(main_classifier)
     # School.painting_school(main_classifier, 100)
-    # School.bing_learner(main_classifier)
-    School.paint_experiment(main_classifier, max_train_samples=None)
+    # word_list = ['obama', 'jackie_chan', 'tom_cruise']
+    # word_list = ['dogs ears', 'dogs nose', 'dogs mouth', 'dogs tail', 'dogs eyes', 'dog']
+    # School.bing_learner(main_classifier, words_list=word_list)
+    # School.paint_experiment(main_classifier, max_train_samples=None)
+    # School.bing_long_learner(main_classifier)
+    # for i in range(100):
+    #     School.random_imagenet_learner(main_classifier)
     # main_classifier.status(show_graph=True)
     # main_classifier.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'

@@ -13,6 +13,7 @@ import urllib
 import tarfile
 # from RememberingMachine import meanie, dot_with_11
 import string
+import random
 
 
 def convert_to_valid_pathname(filename):
@@ -221,6 +222,7 @@ def download_imagenet_wnid(wnid, actual_label, root_folder='./imagenet/'):
             tar = tarfile.open(archive_file)
         except tarfile.ReadError:
             print 'Error, could not open ', archive_file, ', skipping.'
+            os.remove(archive_file)
             return None
         os.makedirs(created_folder)
         tar.extractall(path=created_folder + '/')
@@ -229,7 +231,7 @@ def download_imagenet_wnid(wnid, actual_label, root_folder='./imagenet/'):
         print 'Folder created name ', created_folder
     else:
         print 'Folder already exists'
-    return os.path.abspath(root_folder + wnid)
+    return created_folder
 
 
 def get_wornet_dict():
@@ -243,61 +245,67 @@ def get_wornet_dict():
     return dict([i.split('\t')[::-1] for i in imagenet_word_list.split('\n')])
 
 
-def imagenet_class_KG(classifier, imagenet_words_list=None):
-    """
-    Kindgergarten of imagenet, where simple shapes are taught.
+# def imagenet_class_KG(classifier, imagenet_words_list=None):
+#     """
+#     Kindgergarten of imagenet, where simple shapes are taught.
+#
+#     Given a list of string corresponding to wordnet words, download and
+#     caffinate them.
+#
+#     :param classifier: the brave classifier willing to learn.
+#     :param imagenet_words_list:  list of strings of imagenet words.
+#     :return:
+#     """
+#     print 'Welcoem to Imagenet KG class'
+#     if not imagenet_words_list:
+#         imagenet_words_list = ['circle, round', 'line', 'parallel']
+#     imagenet_dict = get_wornet_dict()
+#     wnid_list = [imagenet_dict[i] for i in imagenet_words_list]
+#     valid_folders = []
+#     root_folder = './imagenet/'
+#     # list_remove = [(j,convert_to_valid_pathname(i)) for j,i in zip(wnid_list,imagenet_words_list)]
+#     for actual_label, wnid in zip(imagenet_words_list, wnid_list):
+#         print 'Getting wnid', wnid
+#         folder_i = download_imagenet_wnid(wnid, actual_label, root_folder)
+#         if folder_i:
+#             valid_folders.append(folder_i)
+#     # Caffinate it's parent directory
+#     # RememberingMachine.caffinate_directory(os.path.abspath(os.path.join(valid_folders[0], os.path.pardir)))
+#     folder_learner(classifier, root_folder, task_name_prefix='Imagenet0_')
+#
 
-    Given a list of string corresponding to wordnet words, download and
-    caffinate them.
-
-    :param classifier: the brave classifier willing to learn.
-    :param imagenet_words_list:  list of strings of imagenet words.
-    :return:
-    """
-    print 'Welcoem to Imagenet KG class'
-    if not imagenet_words_list:
-        imagenet_words_list = ['circle, round', 'line', 'parallel']
-    imagenet_dict = get_wornet_dict()
-    wnid_list = [imagenet_dict[i] for i in imagenet_words_list]
-    valid_folders = []
-    root_folder = './imagenet/'
-    # list_remove = [(j,convert_to_valid_pathname(i)) for j,i in zip(wnid_list,imagenet_words_list)]
-    for actual_label, wnid in zip(imagenet_words_list, wnid_list):
-        print 'Getting wnid', wnid
-        folder_i = download_imagenet_wnid(wnid, actual_label, root_folder)
-        if folder_i:
-            valid_folders.append(folder_i)
-    # Caffinate it's parent directory
-    # RememberingMachine.caffinate_directory(os.path.abspath(os.path.join(valid_folders[0], os.path.pardir)))
-    folder_learner(classifier, root_folder, task_name_prefix='Imagenet0_')
-
-
-def imagenet_school(classifier):
+def random_imagenet_learner(classifier, k_words=None, number_labels=10):
     """
     Calls imagenet class again and again with progressively tougher objects.
     :param classifier: the willing learning classifier
+    :param k_words: the list of imagenet labels to learn.
     :return:
     """
-    # Class 0
-    imagenet_words_list_0 = ['circle, round', 'line', 'triangle', 'square',
-                             'parallel', 'parallelogram']
-    imagenet_class_KG(classifier, imagenet_words_list_0)
-
-    # Class 1
-    imagenet_words_list_1 = ['circle, round', 'line', 'triangle', 'square',
-                             'parallel', 'parallelogram']
-    imagenet_class_KG(classifier, imagenet_words_list_1)
-
-    # Class 2
-    imagenet_words_list_2 = ['circle, round', 'line', 'triangle', 'square',
-                             'parallel', 'parallelogram']
-    imagenet_class_KG(classifier, imagenet_words_list_0)
-
-    # Class 3
-    imagenet_words_list_3 = ['circle, round', 'line', 'triangle', 'square',
-                             'parallel', 'parallelogram']
-    imagenet_class_KG(classifier, imagenet_words_list_3)
-
+    print 'Welcoem to Imagenet random class'
+    imagenet_dict = get_wornet_dict()
+    words_list = imagenet_dict.keys()
+    root_folder = './imagenet/'
+    if not k_words:
+        k_words = random.sample(words_list, number_labels)
+    wnid_list = []
+    new_k_words = []
+    for i_k in k_words:
+        try:
+            wnid_list.append(imagenet_dict[i_k])
+            new_k_words.append(i_k)
+        except KeyError:
+            print 'The word ', i_k, ' does not exist in Imagenet.'
+    # Download
+    downloaded_folders_list = []
+    for actual_label, wnid in zip(new_k_words, wnid_list):
+        print 'Getting wnid', wnid, actual_label
+        downloaded_folders_list.append(download_imagenet_wnid(wnid, actual_label, root_folder))
+    # learn actually
+    for word_i in downloaded_folders_list:
+        if word_i:
+            single_label_learner(classifier, root_folder=root_folder, label=os.path.split(word_i)[-1],
+                                 task_name_prefix='imagenet_rn_', remembering_threshold=0.8, max_samples_per_cat=1000,
+                                 feedback_remember=True, download=False)
 
 # ################## END imagenet ##################################################
 def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_ratio=2,
@@ -368,10 +376,82 @@ def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_
                 #     # forget it, can't differentiate well
                 #     classifier.remove(task_name)
             else:
-                print ' :( classifier doesn\'t understand this task at all. Forget it. Reload'
+                print ' :( classifier doesn\'t understand ', category_i, ' task at all. Forget it. Reload'
                 classifier.reload()
     print 'The mean F1 score (unweighted) is ', np.mean(all_score)
 
+
+def single_label_learner(classifier, root_folder, label, task_name_prefix, negatives_samples_ratio=2,
+                   use_background=False, max_samples_per_cat=None,
+                   remembering_threshold=1.1, feedback_remember=False, download=True):
+    """
+    :param classifier: A classifer that has fit function.
+    :param root_folder: directory which contains many classes
+    :param task_name_prefix: Name of the task to add to all, string
+    :param negatives_samples_ratio: amount of negative samples to use.
+    :param use_background: boolean, default True, if False, won't use the google background
+        images to extend negatives list.
+    :param max_samples_per_cat: maximum number of samples to load in positive class. Default
+        None, which means all.
+    :param remembering_threshold: applies when feedback_remember is True.
+        the F1 score above which to save the classifier. By default
+        this value is 1.1 meaning it wont save no matter what. A value less that zero will always
+        save. 0.8 would save only if it's sure.
+    :param feedback_remember: boolean, default False. If true saves or reload based on score.
+    :param download: boolean, default True. Whether to download image from search engine.
+    :return:
+    """
+    print 'Single folder training started for the label', label
+    categories = [i for i in os.listdir(root_folder)
+                  if os.path.isdir(os.path.join(root_folder, i))]
+    if download:
+        get_images_bing(query=label)
+    # Hold one out teaching. For each category, that category is positive, rest are negative.
+    # The negatives also consist of a background images folder.
+    all_score = []
+    positive_list = glob.glob(root_folder + '/' + label + '/*.jpg')
+    positive_list.extend(glob.glob(root_folder + '/' + label + '/*.JPEG'))
+    positive_list.extend(glob.glob(root_folder + '/' + label + '/*.png'))
+    # limit number of samples.
+    if max_samples_per_cat:
+        positive_list = positive_list[:max_samples_per_cat]
+    positive_samples_count = len(positive_list)
+    if positive_samples_count < 50:
+        print 'There are less than 50 samples of image in this, wont learn ', label
+        return
+    negatives_list = []
+    for other_category_i in categories:
+        if other_category_i != label:
+            negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.jpg')
+            negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.JPEG')
+            negatives_list += glob.glob(root_folder + '/' + other_category_i + '/*.png')
+            # no then it will only load the first few negatives always.
+            # if len(negatives_list) > positive_samples_count * negatives_samples_ratio:
+            #     break  # enough negatives collected.
+    shuffle(negatives_list)
+    small_negative_list = negatives_list[:positive_samples_count * negatives_samples_ratio]
+    if use_background:
+        small_negative_list.extend(glob.glob(
+            '/home/student/Downloads/101_ObjectCategories/BACKGROUND_Google' + '/*.jpg'))
+    x_total = positive_list + small_negative_list
+    y = [1] * len(positive_list) + [0] * len(small_negative_list)
+    x_train, x_test, y_train, y_test = train_test_split(x_total, y)
+    task_name = task_name_prefix +  label
+    print 'Currently training category ', label, ' with number of samples = ', len(x_total)
+    classifier.fit(x_train, y_train, task_name)
+    score = classifier.score(x_test, y_test)
+    print 'The test score for this task is ', score
+    all_score.append(score)
+    if feedback_remember:
+        if score > remembering_threshold:
+            print 'This task was learn well. Classifier shall remember.'
+            classifier.save()
+            # else:
+            #     # forget it, can't differentiate well
+            #     classifier.remove(task_name)
+        else:
+            print ' :( classifier doesn\'t understand ', label, ' task at all. Forget it. Reload'
+            classifier.reload()
 
 
 # Linear trainer
@@ -654,9 +734,15 @@ def bing_learner(classifier, words_list=None, download_folder='bing_images', fee
                   'smooth', 'rough', 'many', 'sparse', 'plain'] if words_list is None else words_list
     for word_i in words_list:
         get_images_bing(word_i, root_folder=download_folder)
-    folder_learner(classifier, root_folder=download_folder, task_name_prefix='bingl_', remembering_threshold=0.8,
-                   feedback_remember=feedback_remember)
+    for word_i in words_list:
+        single_label_learner(classifier, root_folder=download_folder, label=word_i, task_name_prefix='bingl_',
+                             remembering_threshold=0.8, feedback_remember=feedback_remember)
 
+
+def bing_long_learner(classifier):
+    words_list = ['edge', 'sharp', 'smooth', 'texture', 'polka', 'curvy', 'apple', 'leaf',
+                  'sun', 'moon', 'face', 'human', 'hands', 'oval']
+    bing_learner(classifier, words_list=words_list, feedback_remember=True)
 
 def get_images_bing(query, root_folder='bing_images'):
     print 'Getting images of ', query, ' from bing.'
@@ -669,7 +755,7 @@ def get_images_bing(query, root_folder='bing_images'):
     if not os.path.isdir(root_folder):
         os.makedirs(root_folder)
     url = "http://www.bing.com/images/search?q=" + query + \
-          "&qft=+filterui:color2-bw+filterui:imagesize-large&FORM=R5IR3"
+          "&qft=+filterui:photo-photo+filterui:imagesize-small&FORM=R5IR3"
     soup = BeautifulSoup(requests.get(url).text)
     images = [a['src'] for a in soup.find_all("img", {"src": re.compile("mm.bing.net")})]
     images += [a['src2'] for a in soup.find_all("img", {"src2": re.compile("mm.bing.net")})]
@@ -694,11 +780,11 @@ def go_to_all_schools(classifier):
     :return:
     """
     print 'The schools available are caltech_101 , cifar10, paintings'
-    imagenet_class_KG(classifier)
     bing_learner(classifier)
     caltech_101(classifier)
     cifar_school(classifier)
     painting_school(classifier)
+    random_imagenet_learner(classifier)
 
 
 if __name__ == '__main__':
