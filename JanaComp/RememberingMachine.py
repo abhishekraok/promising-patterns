@@ -498,8 +498,8 @@ class RememberingVisualMachine:
             except ValueError:
                 print 'The specified label does not exist.'
                 return
-            x_co_ords = np.argsort(np.abs(interdependency_matrix[y_co_ord_signle]))[:-max_tell:]
-            y_co_ords = np.repeat(y_co_ord_single, *x_co_ords.shape[0])
+            x_co_ords = np.argsort(np.abs(interdependency_matrix[y_co_ord_single]))[-max_tell:]
+            y_co_ords = np.array([y_co_ord_single] * x_co_ords.shape[0])
         else:
             flattened_indices = np.argsort(np.abs(interdependency_matrix), axis=None)[-max_tell:]
             x_co_ords, y_co_ords = np.unravel_index(flattened_indices, interdependency_matrix.shape)
@@ -508,20 +508,14 @@ class RememberingVisualMachine:
                 print labels_list[x_i], ' looks like ', labels_list[y_i]
             else:
                 print labels_list[x_i], ' does not look like ', labels_list[y_i]
-            # flattened_index = np.argmax(interdependency_matrix)
-            # coords = np.unravel_index()
-        # max_indices = np.argmax(interdependency_matrix, axis=1)
-        # pick max_tell of max
-        # for category_i in max_indices[:max_tell]:
-        #     top_similarities = np.argmax(interdependency_matrix[category_i])
-        #     sentence = 'The ' + labels_list[category_i] + ' looks like '
-        #     valid = False
-        #     for similar_i in top_similarities:
-        #         if interdependency_matrix[category_i, similar_i] > 0.1:
-        #             sentence += labels_list[similar_i]
-        #             valid = True
-        #     if valid:
-        #         print sentence
+
+        # usefulness of each classifier.
+        usefullness_array = np.sum(np.abs(interdependency_matrix), axis=0)
+        plt.plot(usefullness_array, 'd')
+        plt.title('usefulness of a classifier')
+        plt.xlabel('Classifier')
+        useful_indices = np.argsort(usefullness_array)
+        print 'The 10 most useful classifiers are ', np.array(self.labels_list)[useful_indices[-10:]]
 
 
 # Global functions
@@ -648,41 +642,9 @@ if __name__ == '__main__':
     else:
         main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
     print 'Loading complete.'
-    # School.caltech_101(main_classifier)
-    # School.caltech_101_test(main_classifier)
-    main_classifier.explain_interdependencies(30)
-    # School.cifar_school(main_classifier)
-    # School.painting_school(main_classifier, 100)
-    # word_list = ['obama', 'jackie_chan', 'tom_cruise']
-    # word_list = ['dogs ears', 'dogs nose', 'dogs mouth', 'dogs tail', 'dogs eyes', 'dog']
-    # School.bing_learner(main_classifier, words_list=word_list)
-    # School.paint_experiment(main_classifier, max_train_samples=None)
-    # School.bing_long_learner(main_classifier)
-    # for i in range(100):
-    #     School.random_imagenet_learner(main_classifier)
-    # main_classifier.status(show_graph=True)
+    # main_classifier.explain_interdependencies(10, label='CalTech101_emu')
+    for i in range(100):
+        School.random_imagenet_learner(main_classifier)
+    main_classifier.status(show_graph=True)
     # main_classifier.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
-
-    # Scratch
-    ##################################
-    # Main_C1.remove_classifier('elephant')
-    # caffe_directory(caltech101_root)
-    # Main_C1.predict(elephant_files_list)
-    # starfish_file = '/home/student/Downloads/101_ObjectCategories/starfish/image_0002.jpg'
-    # starfish_caffe_feature = extract_caffe_features(starfish_file)
-    # starfish_generated_sample = Main_C1.generate_sample('starfish').reshape(1,-1)
-    # matrix_to_send_in = np.vstack([np.zeros([1, starfish_generated_sample.shape[1]]), starfish_generated_sample])
-    # matrix_to_send_in[0, :starfish_caffe_feature.shape[0] ] = starfish_caffe_feature
-    # Main_C1.predict_from_features(matrix_to_send_in)
-    # Main_C1.predict_from_features(starfish_generated_sample.reshape(1,-1))
-    # Main_C1.reflect('elephant')
-    # caffinate_directory(paintings_root)
-    # caltech101_root = '/home/student/Downloads/101_ObjectCategories'
-    # paintings_root = '/home/student/Lpromising-patterns/paintings/data/two_class_full_size'
-    # elephant_files_list = ['/home/student/Downloads/101_ObjectCategories/elephant/image_0002.jpg',
-    #                        '/home/student/Downloads/101_ObjectCategories/elephant/image_0003.jpg',
-    #                        '/home/student/Downloads/101_ObjectCategories/elephant/image_0004.jpg']
-    # rhino_files_list = ['/home/student/Downloads/101_ObjectCategories/rhino/image_0002.jpg',
-    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0003.jpg',
-    #                     '/home/student/Downloads/101_ObjectCategories/rhino/image_0004.jpg']

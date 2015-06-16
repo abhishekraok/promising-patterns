@@ -306,6 +306,14 @@ def random_imagenet_learner(classifier, k_words=None, number_labels=10):
             single_label_learner(classifier, root_folder=root_folder, label=os.path.split(word_i)[-1],
                                  task_name_prefix='imagenet_rn_', remembering_threshold=0.8, max_samples_per_cat=1000,
                                  feedback_remember=True, download=False)
+    # delete folders to save space
+    import shutil
+    for word_i in downloaded_folders_list:
+        if word_i:
+            shutil.rmtree(word_i)
+            print 'Deleted folder ', word_i
+
+
 
 # ################## END imagenet ##################################################
 def folder_learner(classifier, root_folder, task_name_prefix, negatives_samples_ratio=2,
