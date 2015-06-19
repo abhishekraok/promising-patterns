@@ -233,15 +233,16 @@ class RememberingVisualMachine:
         self.memory_width += output_width
         self.classifiers_list.append(new_classifier)
 
-    def status(self, show_graph=False):
+    def status(self, show_graph=False, show_list=False):
         """Gives out the current status, like number of classifier and prints their values
 
         :return: float, sparsity value"""
 
-        print 'Currently there are ', len(self.classifiers_list), ' classifiers. They are'
+        print 'Currently there are ', len(self.classifiers_list), ' classifiers.'
         classifiers_coefficients = np.zeros([len(self.classifiers_list), self.memory_width])
         self.labels_list = [classifier_i.label for classifier_i in self.classifiers_list]
-        print self.labels_list
+        if show_list:
+            print self.labels_list
         for count, classifier_i in enumerate(self.classifiers_list):
             coeffs_i = classifier_i.classifier.coef_ \
                 if classifier_i.classifier_type == 'standard' else np.zeros([1, 1])
@@ -459,7 +460,10 @@ class RememberingVisualMachine:
         print 'Remembering Machine saved.'
 
     def reload(self, filename='RememberingClassifier.pkl.gz'):
-        self = pickle.load(gzip.open(filename, 'r'))
+        if os.path.exists(filename):
+            self = pickle.load(gzip.open(filename, 'r'))
+        else:
+            self = RememberingVisualMachine(input_width=self.memory_width, svm_c=self.svm_c)
 
 
     def remove_duplicates(self):
@@ -636,15 +640,29 @@ input_dimension = 4096
 if __name__ == '__main__':
     start_time = time.time()
     classifier_file_name = 'RememberingClassifier.pkl.gz'
-    print 'Loading classifier file ...'
-    if os.path.isfile(classifier_file_name):
-        main_classifier = pickle.load(gzip.open(classifier_file_name, 'r'))
-    else:
-        main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
-    print 'Loading complete.'
-    # main_classifier.explain_interdependencies(10, label='CalTech101_emu')
-    for i in range(100):
-        School.random_imagenet_learner(main_classifier)
-    main_classifier.status(show_graph=True)
+    # print 'Loading classifier file ...'
+    # if os.path.isfile(classifier_file_name):
+    #     main_classifier = pickle.load(gzip.open(classifier_file_name, 'r'))
+    # else:
+    #     main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
+    # print 'Loading complete.'
+    main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
+    words_list = ['mango']
+    School.random_imagenet_learner(main_classifier, k_words=words_list, cleanup=False)
+    # School.bing_learner(main_classifier, words_list=words_list, feedback_remember=False)
+    main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
+    words_list = ['mango', 'tree', 'mango, mango tree, Mangifera indica']
+    School.random_imagenet_learner(main_classifier, k_words=words_list, cleanup=False)
+    # School.bing_learner(main_classifier, words_list=words_list, feedback_remember=False)
+    # main_classifier.explain_interdependencies(10, label='paintings_color-field-painting')
+    # main_classifier.explain_interdependencies(10, label='paintings_expressionism')
+    # main_classifier.explain_interdependencies(10, label='paintings_realism')
+    # main_classifier.explain_interdependencies(10, label='paintings_surrealism')
+    # two_class_paintings = '/home/student/ln_onedrive/code/promising-patterns/paintings/data/five_class_full_size/'
+    # School.paint_experiment(main_classifier, data_dir=two_class_paintings)
+    # for i in range(100):
+    #     School.random_imagenet_learner(main_classifier)
+    # main_classifier.explain_interdependencies()
+    main_classifier.status(show_graph=True, show_list=True)
     # main_classifier.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'

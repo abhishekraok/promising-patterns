@@ -274,11 +274,12 @@ def get_wornet_dict():
 #     folder_learner(classifier, root_folder, task_name_prefix='Imagenet0_')
 #
 
-def random_imagenet_learner(classifier, k_words=None, number_labels=10):
+def random_imagenet_learner(classifier, k_words=None, number_labels=10, feedback_remember=True, cleanup=True):
     """
     Calls imagenet class again and again with progressively tougher objects.
     :param classifier: the willing learning classifier
     :param k_words: the list of imagenet labels to learn.
+    :param cleanup: default True, will delete the downloaded folder.
     :return:
     """
     print 'Welcoem to Imagenet random class'
@@ -305,13 +306,14 @@ def random_imagenet_learner(classifier, k_words=None, number_labels=10):
         if word_i:
             single_label_learner(classifier, root_folder=root_folder, label=os.path.split(word_i)[-1],
                                  task_name_prefix='imagenet_rn_', remembering_threshold=0.8, max_samples_per_cat=1000,
-                                 feedback_remember=True, download=False)
+                                 feedback_remember=feedback_remember, download=False)
     # delete folders to save space
-    import shutil
-    for word_i in downloaded_folders_list:
-        if word_i:
-            shutil.rmtree(word_i)
-            print 'Deleted folder ', word_i
+    if cleanup:
+        import shutil
+        for word_i in downloaded_folders_list:
+            if word_i:
+                shutil.rmtree(word_i)
+                print 'Deleted folder ', word_i
 
 
 
@@ -417,6 +419,9 @@ def single_label_learner(classifier, root_folder, label, task_name_prefix, negat
     # Hold one out teaching. For each category, that category is positive, rest are negative.
     # The negatives also consist of a background images folder.
     all_score = []
+    # remove the ending /
+    if root_folder[-1] == '/':
+        root_folder = root_folder[:-1]
     positive_list = glob.glob(root_folder + '/' + label + '/*.jpg')
     positive_list.extend(glob.glob(root_folder + '/' + label + '/*.JPEG'))
     positive_list.extend(glob.glob(root_folder + '/' + label + '/*.png'))
@@ -764,10 +769,21 @@ def get_images_bing(query, root_folder='bing_images'):
         os.makedirs(root_folder)
     url = "http://www.bing.com/images/search?q=" + query + \
           "&qft=+filterui:photo-photo+filterui:imagesize-small&FORM=R5IR3"
-    soup = BeautifulSoup(requests.get(url).text)
-    images = [a['src'] for a in soup.find_all("img", {"src": re.compile("mm.bing.net")})]
-    images += [a['src2'] for a in soup.find_all("img", {"src2": re.compile("mm.bing.net")})]
+    # adding minor variations in the query to get more images
+    url2 = "http://www.bing.com/images/search?q=images of " + query + \
+          "&qft=+filterui:photo-photo+filterui:imagesize-small&FORM=R5IR3"
+    url3 = "http://www.bing.com/images/search?q=" + query + \
+          " photos&qft=+filterui:photo-photo+filterui:imagesize-small&FORM=R5IR3"
+    url4 = "http://www.bing.com/images/search?q=photo of " + query + \
+          "&qft=+filterui:photo-photo+filterui:imagesize-small&FORM=R5IR3"
+    images = []
+    for url_i in [url, url2, url3, url4]:
+        soup = BeautifulSoup(requests.get(url).text)
+        images += [a['src'] for a in soup.find_all("img", {"src": re.compile("mm.bing.net")})]
+        images += [a['src2'] for a in soup.find_all("img", {"src2": re.compile("mm.bing.net")})]
     current_folder = root_folder + '/' + query
+    # remove duplicates
+    images = set(images)
     if not os.path.isdir(current_folder):
         os.makedirs(current_folder)
         for i, img in enumerate(images):
