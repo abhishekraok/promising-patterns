@@ -19,6 +19,11 @@ Consolidate folder learner and paint experiment.  Difference is
 paint experiment takes all together.
 Train a feedback online learner. Where if the score is good you save
 else you reload.
+
+Update: 19 June 2015
+Todos:
+Create a bank of negatives for future learning.
+Create a file with caffe extracted features with limit of a million rows.
 """
 
 __author__ = 'Abhishek Rao'
@@ -465,7 +470,6 @@ class RememberingVisualMachine:
         else:
             self = RememberingVisualMachine(input_width=self.memory_width, svm_c=self.svm_c)
 
-
     def remove_duplicates(self):
         print 'removing duplicates'
         duplicates_list = []
@@ -564,15 +568,23 @@ def caffe_init():
     return net, transformer
 
 
-def extract_caffe_features(filename):
+def extract_caffe_features(filename, layer=7):
     """ Given a filename extracts the caffe features.
     Normalized by dividing by max.
 
     Argument:
         filename: string path to file
+        layer: valid input 7,6. Which layer of CNN to give out.
+            fc6, or fc7. Default 7.
     """
+    if layer is 7:
+        cached_caffe_file = filename[:-3] + 'caffe_feature.csv'
+    elif layer is 6:
+        cached_caffe_file = filename[:-3] + 'fc6.csv'
+    else:
+        print 'Invalid layer option, must be 6 or 7'
+        raise ValueError
     # cachine file feature.
-    cached_caffe_file = filename[:-3] + 'caffe_feature.csv'
     if os.path.isfile(cached_caffe_file):
         feat = np.loadtxt(cached_caffe_file, delimiter=',')
     else:
@@ -585,10 +597,13 @@ def extract_caffe_features(filename):
 
         caffe_net.blobs['data'].data[...] = caffe_transformer.preprocess('data', caffe.io.load_image(filename))
         caffe_net.forward()
-        feat = caffe_net.blobs['fc7'].data[0]
+        if layer is 7:
+            feat = caffe_net.blobs['fc7'].data[0]
+        else:
+            feat = caffe_net.blobs['fc6'].data[0]
         np.savetxt(cached_caffe_file, feat, delimiter=',')
     max_feat = np.max(feat)
-    normalized_feat = feat / max_feat if abs(max_feat) > 1e-4 else feat
+    normalized_feat = feat / max_feat if abs(max_feat) > 1e-8 else feat
     return normalized_feat
 
 
@@ -641,18 +656,26 @@ if __name__ == '__main__':
     start_time = time.time()
     classifier_file_name = 'RememberingClassifier.pkl.gz'
     # print 'Loading classifier file ...'
-    # if os.path.isfile(classifier_file_name):
-    #     main_classifier = pickle.load(gzip.open(classifier_file_name, 'r'))
-    # else:
-    #     main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
+    if os.path.isfile(classifier_file_name):
+        main_classifier = pickle.load(gzip.open(classifier_file_name, 'r'))
+    else:
+        main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
     # print 'Loading complete.'
-    main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
-    words_list = ['mango']
-    School.random_imagenet_learner(main_classifier, k_words=words_list, cleanup=False)
+    # main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
+    # words_list = ['mango, mango tree, Mangifera indica']
+    # School.random_imagenet_learner(main_classifier, k_words=words_list, cleanup=False)
     # School.bing_learner(main_classifier, words_list=words_list, feedback_remember=False)
-    main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
-    words_list = ['mango', 'tree', 'mango, mango tree, Mangifera indica']
-    School.random_imagenet_learner(main_classifier, k_words=words_list, cleanup=False)
+    # main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
+    # words_list = ['mango', 'tree', 'mango, mango tree, Mangifera indica']
+    # School.random_imagenet_learner(main_classifier, k_words=words_list, feedback_remember=False, cleanup=False)
+    # for i in range(100):
+    #     School.random_imagenet_learner(main_classifier)
+    # main_classifier.explain_interdependencies()
+    main_classifier.status(show_graph=True, show_list=True)
+    main_classifier.save(filename=classifier_file_name)
+    print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
+
+    # scratch
     # School.bing_learner(main_classifier, words_list=words_list, feedback_remember=False)
     # main_classifier.explain_interdependencies(10, label='paintings_color-field-painting')
     # main_classifier.explain_interdependencies(10, label='paintings_expressionism')
@@ -660,9 +683,3 @@ if __name__ == '__main__':
     # main_classifier.explain_interdependencies(10, label='paintings_surrealism')
     # two_class_paintings = '/home/student/ln_onedrive/code/promising-patterns/paintings/data/five_class_full_size/'
     # School.paint_experiment(main_classifier, data_dir=two_class_paintings)
-    # for i in range(100):
-    #     School.random_imagenet_learner(main_classifier)
-    # main_classifier.explain_interdependencies()
-    main_classifier.status(show_graph=True, show_list=True)
-    # main_classifier.save(filename=classifier_file_name)
-    print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
