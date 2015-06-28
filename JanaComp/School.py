@@ -446,6 +446,7 @@ def single_label_learner(classifier, root_folder, label, task_name_prefix, negat
     if use_background:
         small_negative_list.extend(glob.glob(
             '/home/student/Downloads/101_ObjectCategories/BACKGROUND_Google' + '/*.jpg'))
+    print 'There are ', len(positive_list), ' positive samples and ', len(small_negative_list), ' negatives.'
     x_total = positive_list + small_negative_list
     y = [1] * len(positive_list) + [0] * len(small_negative_list)
     x_train, x_test, y_train, y_test = train_test_split(x_total, y)
@@ -465,6 +466,7 @@ def single_label_learner(classifier, root_folder, label, task_name_prefix, negat
         else:
             print ' :( classifier doesn\'t understand ', label, ' task at all. Forget it. Reload'
             classifier.reload()
+    return score
 
 
 # Linear trainer
@@ -702,7 +704,7 @@ def paint_experiment(classifier, data_dir=None, max_train_samples=None):
     """
     # load data
     if not data_dir:
-        data_dir = '/home/student/ln_onedrive/code/promising-patterns/paintings/data/two_class_full_size/'
+        data_dir = '/home/student/ln_onedrive/code/promising-patterns/paintings/data/five_class_full_size/'
     classes = [i for i in os.listdir(data_dir) if os.path.isdir(data_dir + i)]
     print 'Getting data from ', os.path.abspath(data_dir)
     print 'The classes are ', classes
@@ -724,10 +726,10 @@ def paint_experiment(classifier, data_dir=None, max_train_samples=None):
     for class_count, class_name in enumerate(classes):  # For each genre
         # convert from 1...N into binary for each class
         y_current_train = 1*[i == class_count for i in y_train]
-        classifier.fit(x_train, y_current_train, 'paintings_' + class_name)
+        classifier.fit(x_train, y_current_train, 'paintings_' + class_name, save_classifier=False)
         y_current_pred = classifier.predict(x_test)
         y_current_test = 1*[i == class_count for i in y_test]
-        print(classification_report(y_current_test, y_current_pred, target_names=['rest', class_name]))
+        # print(classification_report(y_current_test, y_current_pred, target_names=['rest', class_name]))
         # current from binary into 1..N
         for i in range(len(y_current_test)):
             if y_current_pred[i]:

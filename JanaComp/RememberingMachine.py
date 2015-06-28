@@ -469,6 +469,7 @@ class RememberingVisualMachine:
             self = pickle.load(gzip.open(filename, 'r'))
         else:
             self = RememberingVisualMachine(input_width=self.memory_width, svm_c=self.svm_c)
+        print 'Reloaded using file ', filename
 
     def remove_duplicates(self):
         print 'removing duplicates'
@@ -671,8 +672,10 @@ if __name__ == '__main__':
     # for i in range(100):
     #     School.random_imagenet_learner(main_classifier)
     # main_classifier.explain_interdependencies()
+    for max_train_samples in [200, 400, 800, 1600, 3200, 6000]:
+        School.paint_experiment(main_classifier, max_train_samples=max_train_samples)
+        main_classifier.reload()
     main_classifier.status(show_graph=True, show_list=True)
-    main_classifier.save(filename=classifier_file_name)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
 
     # scratch
@@ -682,4 +685,3 @@ if __name__ == '__main__':
     # main_classifier.explain_interdependencies(10, label='paintings_realism')
     # main_classifier.explain_interdependencies(10, label='paintings_surrealism')
     # two_class_paintings = '/home/student/ln_onedrive/code/promising-patterns/paintings/data/five_class_full_size/'
-    # School.paint_experiment(main_classifier, data_dir=two_class_paintings)
