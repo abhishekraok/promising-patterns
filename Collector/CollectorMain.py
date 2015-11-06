@@ -61,6 +61,35 @@ class CollectorNode:
         self.output = 1 * (self.confidence > self.threshold)
 
 
+class CollectorNetwork:
+    """
+    Collection of collection network.
+    """
+
+    def __init__(self, input_dimension=10):
+        self.input_collection = [CollectorNode(0)] * 10
+        self.collection = []
+
+    # def remember(self, X):
+    #     self.activate(X)
+    #     new_cn = CollectorNode(weight_vector=X)
+    #     self.collection.append(new_cn)
+
+    def activate(self, X):
+        """
+        Activates all the input CN and then the collection nodes.
+
+        :param X: (1 row, n cols) np array
+        """
+        input_dimension = X.shape[1]
+        for i in range(input_dimension):
+            self.input_collection[i].output = X[i]
+        for collector_node_i in self.collection:
+            collector_node_i.activate_output()
+
+
+
+
 if __name__ == '__main__':
     cn1 = CollectorNode(0)
     cn2 = CollectorNode(3)
