@@ -29,25 +29,26 @@ Create a file with caffe extracted features with limit of a million rows.
 __author__ = 'Abhishek Rao'
 
 # Headers
-import numpy as np
-from sklearn import svm
-import math
-import matplotlib.pyplot as plt
 import cPickle as pickle
-from sklearn.metrics import f1_score
-from sklearn.preprocessing import normalize
-import sys
-import os
 import copy
 import glob
-import time
 import gzip
+import math
+import os
+import sys
+import time
 from random import shuffle
+
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn import svm
+from sklearn.metrics import f1_score
+from sklearn.preprocessing import normalize
+
 # Make sure that caffe is on the python path:
 caffe_root = '/home/student/ln_onedrive/code/promising-patterns/caffe/'  # this file is expected to be in {caffe_root}/examples
 sys.path.insert(0, caffe_root + 'python')
-import caffe
-import School
+# import caffe
 import types
 
 
@@ -149,9 +150,9 @@ class RememberingVisualMachine:
     def fit(self, x_in, y, classifier_name='Default', relearn=False, save_classifier=False):
         """ Adds a new classifier and trains it, similar to Scikit API
 
+        :param classifier_name:
         :param x_in: can either be a list of string, where strings are filepaths of images
                 or they can be a 2d numpy matrix.
-        :param predict_files_list: input files list, list of strings
         :param relearn: if given same classifier name, whether to relearn.
         :param save_classifier: should it write to memory the learnt classifier
 
@@ -169,10 +170,10 @@ class RememberingVisualMachine:
         else:
             # x_in is numpy matrix
             x_pred = x_in
-        self.fit_from_caffe_features(x_pred, y, classifier_name, relearn, save_classifier)
+        self.fit_from_features(x_pred, y, classifier_name, relearn, save_classifier)
 
-    def fit_from_caffe_features(self, x_in, y, classifier_name='Default', relearn=False,
-                                save_classifier=True):
+    def fit_from_features(self, x_in, y, classifier_name='Default', relearn=False,
+                          save_classifier=True):
         """
         Adds a new classifier and trains it, similar to Scikit API
 
@@ -297,13 +298,13 @@ class RememberingVisualMachine:
         :returns: tuple of array and string.
             array is hard decision 1,0. String is the classifier class detected."""
         # check whether x_in is a files list or a numpy array
-        if os.path.isfile(x_in[0]):
-            # x_in is a files list
-            x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
-                                for input_file in x_in])
-        else:
-            # x_in is numpy matrix
-            x_pred = x_in
+        # if os.path.isfile(x_in[0]):
+        #     # x_in is a files list
+        #     x_pred = np.vstack([copy.copy(extract_caffe_features(input_file))
+        #                         for input_file in x_in])
+        # else:
+        #     # x_in is numpy matrix
+        x_pred = x_in
         return self.predict_from_features(x_pred, task_name)
 
     def predict_from_features(self, x_pred, task_name=-1):
@@ -433,7 +434,7 @@ class RememberingVisualMachine:
         y = [1] * positive_train.shape[0] + [0] * other_samples.shape[0]
         # create a zeros matrix that is wide enough to hold both. Max of columns size
         X_train = np.zeros([len(y), max(other_samples.shape[1], positive_train.shape[1])])
-        self.fit_from_caffe_features(X_train, y, 'reflected_' + classifier_name)
+        self.fit_from_features(X_train, y, 'reflected_' + classifier_name)
 
     def score(self, input_x, y):
         """
@@ -661,7 +662,7 @@ if __name__ == '__main__':
         main_classifier = pickle.load(gzip.open(classifier_file_name, 'r'))
     else:
         main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
-    # print 'Loading complete.'
+    print 'Loading complete.'
     # main_classifier= RememberingVisualMachine(input_width=input_dimension, svm_c=1)
     # words_list = ['mango, mango tree, Mangifera indica']
     # School.random_imagenet_learner(main_classifier, k_words=words_list, cleanup=False)
@@ -672,9 +673,13 @@ if __name__ == '__main__':
     # for i in range(100):
     #     School.random_imagenet_learner(main_classifier)
     # main_classifier.explain_interdependencies()
-    for max_train_samples in [200, 400, 800, 1600, 3200, 6000]:
-        School.paint_experiment(main_classifier, max_train_samples=max_train_samples)
-        main_classifier.reload()
+    # for max_train_samples in [200, 400, 800, 1600, 3200, 6000]:
+    #     School.paint_experiment(main_classifier, max_train_samples=max_train_samples)
+    #     main_classifier.reload()
+    # School.task_OR_problem(main_classifier)
+    # School.task_and(main_classifier)
+    # School.task_XOR_problem(main_classifier)
+    # main_classifier.save()
     main_classifier.status(show_graph=True, show_list=True)
     print 'Total time taken to run this program is ', round((time.time() - start_time) / 60, ndigits=2), ' mins'
 

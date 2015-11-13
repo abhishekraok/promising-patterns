@@ -3,14 +3,15 @@
 __author__ = 'Abhishek Rao'
 
 # Headers
-import numpy as np
-import idx2numpy
-from sklearn.cross_validation import train_test_split
-import os
 import glob
-from random import shuffle
-import urllib
+import os
 import tarfile
+import urllib
+from random import shuffle
+
+import idx2numpy
+import numpy as np
+from sklearn.cross_validation import train_test_split
 # from RememberingMachine import meanie, dot_with_11
 import string
 import random
@@ -181,7 +182,7 @@ def mnist_school(classifier, samples_limit=5123):
         # binarize
         y = 1 * (label_arr == digit_i)[:samples_limit]
         x_train = np.vstack([i.flatten() for i in train_arr[:samples_limit]])
-        classifier.fit_from_caffe_features(x_train, y, 'MNIST_' + str(digit_i))
+        classifier.fit_from_features(x_train, y, 'MNIST_' + str(digit_i))
     print 'MNIST training done.'
     # Testing on last 1000 samples
     print 'MNIST testing started.'
