@@ -23,7 +23,10 @@ def convert_to_valid_pathname(filename):
     return ''.join(c for c in filename if c in validfilenamechars)
 
 
-def task_and(classifier):
+def task_and(classifier, labeled_prediction = False):
+    """
+    :param labeled_prediction: Specifies whether to pass label to predict function
+    """
     # Task 1 noisy and
     noise_columns = np.random.randn(90, 3)
     data_columns = np.array([[1, 0], [0, 1], [1, 1], [0, 0]] * 2 + [[0, 1]])
@@ -32,14 +35,19 @@ def task_and(classifier):
     print X
     y = np.array([[0, 0, 1, 0] * 2 + [0]])
     y_big = np.hstack([y] * 10).flatten()
-    classifier.fit(X, y_big, classifier_name='Noisy and long')
-    yp = classifier.predict(X)
+    noisy_and_long_ = 'And 1,2 rest noise'
+    classifier.fit(X, y_big, noisy_and_long_)
+    if labeled_prediction:
+        yp = classifier.predict(X, noisy_and_long_)
+        print 'Score for task Noisy and long is ', classifier.score(X, y_big, noisy_and_long_)
+    else:
+        yp = classifier.predict(X)
+        print 'Score for task Noisy and long is ', classifier.score(X, y_big)
     print 'Predicted value is '
     print yp
-    print 'Score for task Noisy and long is ', classifier.score(X, y_big)
 
 
-def task_XOR_problem(classifier):
+def task_XOR_problem(classifier, labeled_prediction = False):
     """
     Trains the classifier in the art of XOR problem
     :param classifier: any general classifier.
@@ -50,8 +58,12 @@ def task_XOR_problem(classifier):
                   [1, 1],
                   [0, 0]] * 50)
     y = np.array([1, 1, 0, 0] * 50)
-    classifier.fit(X, y, classifier_name='XOR task')
-    yp = classifier.predict(X)
+    classifier_name = 'XOR task'
+    classifier.fit(X, y, classifier_name_)
+    if labeled_prediction:
+        yp = classifier.predict(X, classifier_name_)
+    else:
+        yp = classifier.predict(X)
     print 'Predicted value is '
     print yp
     print 'Score for XOR problem is ', classifier.score(X, y)
