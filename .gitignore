@@ -68,3 +68,14 @@ target/
 *.PBS*
 *.o*
 *.sh
+
+#.idea
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/promising-patterns.iml
+.idea/vcs.xml
+.idea/workspace.xml
+.idea/dictionaries:
+abhis.xml
+.idea/.name
