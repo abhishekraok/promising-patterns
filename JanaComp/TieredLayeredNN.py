@@ -1,20 +1,28 @@
 '''
 Implementing the idea of tiered layered neural network.
+
+Todo 27 Feb 2016:
+1. Unit tests
+2. Identify
+3. Save Load
 '''
 import numpy as np
 from sklearn.metrics import f1_score
+import matplotlib.pyplot as plt
+from PyDataSetSchool import PyDatasetSchool
+from sklearn import svm
 
 import School
-from PyDataSetSchool import PyDatasetSchool
-from sklearn.svm import SVC
 
+#constants
+svm_c = 1
 
 class NodeClassifier:
     def __init__(self, label):
         """
         :type label: str, a name for the function
         """
-        self.function = SVC()
+        self.function = svm.LinearSVC(C=svm_c, dual=False, penalty='l1')
         self.label = label
 
     def fit(self, X, y):
@@ -122,10 +130,27 @@ class MainClassifier:
         total_number_functions = sum([len(layer_i.nodes) for layer_i in self.layers])
 
         print 'Currently there are ', len(self.layers), ' layers'
-        classifiers_coefficients = np.zeros([total_number_functions, self.input_dimension + 1])
+        classifiers_coefficients = np.zeros([total_number_functions, self.input_dimension])
         self.labels_list = [function.label for layer in self.layers for function in layer.nodes]
+        classifier_count = 0
         if show_list:
             print self.labels_list
+        for i, layer_i in enumerate(self.layers):
+            if i == 0:
+                continue
+            for node_i in layer_i.nodes:
+                coeffs_i =node_i.function.coef_
+                classifiers_coefficients[classifier_count, :coeffs_i.shape[1]] = coeffs_i
+                classifier_count += 1
+        if show_graph:
+            fig, ax = plt.subplots()
+            fig.canvas.draw()
+            labels = [item.get_text() for item in ax.get_yticklabels()]
+            for i, label_i in enumerate(self.labels_list):
+                labels[i] = label_i
+            plt.imshow(coeffs_i, interpolation='none', cmap='gray')
+            ax.set_yticklabels(labels)
+            plt.show()
         # for count, classifier_i in enumerate(self.classifiers_list):
         #     coeffs_i = classifier_i.classifier.coef_ \
         #         if classifier_i.classifier_type == 'standard' else np.zeros([1, 1])
@@ -151,21 +176,10 @@ class MainClassifier:
         #     plt.title('Classifier interdependency')
         #     plt.show()
         #
-        #     # Coefficients matrix plot, sparsity, thresholded.
-        #     plt.figure()
-        #     classifiers_coefficients[classifiers_coefficients != 0] = 1
-        #     # The mean number of non zero coefficients, 2 because its triangular.
-        #     print 'Sparsity ratio is ', 2 * classifiers_coefficients.mean()
-        #     plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
-        #     plt.title('Sparsity of coefficients')
-        #     # classifier interdependency.
-        #     plt.show()
-        #     return 2 * classifiers_coefficients.mean()
-        # return 0
 
 if __name__ == '__main__':
     main_classifier = MainClassifier(input_dimension=4)
     # School.task_and(main_classifier, labeled_prediction=True)
-    PyDatasetSchool.train_iris_setosa(main_classifier, True)
-    main_classifier.status(show_graph=False, show_list=True)
+    PyDatasetSchool.train_iris(main_classifier, True)
+    main_classifier.status(show_graph=True, show_list=True)
 

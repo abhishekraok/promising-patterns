@@ -35,10 +35,12 @@ class PyDatasetSchool:
         print 'The score for task ', training_name, ' is ', score
 
     @staticmethod
-    def train_iris_setosa(classifier, prediction_label):
-        classifier_name = 'PyDataset_iris_setosa'
+    def train_iris(classifier, prediction_label):
+        classifier_base_name = 'PyDataset_iris_'
         iris = data('iris')
         X = np.array(iris)[:, :4]
         labels = np.array(iris)[:, 4]
-        y = np.array([i == 'setosa' for i in labels])
-        PyDatasetSchool.basic_train((X, y), classifier_name, classifier, prediction_label)
+        unique_labels = list(set(labels))
+        for label_i in unique_labels:
+            y = np.array([i == label_i for i in labels])
+            PyDatasetSchool.basic_train((X, y),classifier_base_name + label_i , classifier, prediction_label)
