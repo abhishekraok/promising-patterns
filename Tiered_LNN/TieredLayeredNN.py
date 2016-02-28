@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 from PyDataSetSchool import PyDatasetSchool
 from sklearn import svm
 
-import School
 
 #constants
 svm_c = 1
