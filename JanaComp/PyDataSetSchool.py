@@ -17,8 +17,8 @@ class PyDatasetSchool:
         """
         A skeleton function that does basic training and testing.
 
-        :param training_name: str, the name of this training.
         :param dataset: tuple, The X, y pair, X is a numpy matrix (samples, features), y is a np.array
+        :param training_name: str, the name of this training.
         :param classifier: should have fit, predict and score functions.
         :param prediction_label: Boolean, whether the classifier accepts a label for train and predict.
         :return:

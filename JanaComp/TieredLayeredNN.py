@@ -48,6 +48,7 @@ class Layer:
 
 class MainClassifier:
     def __init__(self, input_dimension):
+        self.input_dimension = input_dimension
         self.layers = [Layer(0, NodeClassifier('Raw Input Layer'))]
 
     def activate(self, X):
@@ -70,6 +71,9 @@ class MainClassifier:
         :param X: np.array, a matrix of size (samples, features)
         :param y: np.array, a column vector of size (samples, 1)
         """
+        if X.shape[1] != self.input_dimension:
+            print 'Oye, input dimension is ', X.shape[1], ' and I am made for ', self.input_dimension
+            raise BaseException
         x_transformed = self.activate(X)
         accuracy_scores = []
         potential_functions = []
@@ -109,8 +113,59 @@ class MainClassifier:
             yp_score = self.predict(input_x, classifier_name)
             return f1_score(y, y_pred=yp_score)
 
+
+    def status(self, show_graph, show_list):
+        """Gives out the current status, like number of functions and prints their values
+        :param show_list: Whether to list all the functions
+        :param show_graph: Boolean, Whether to show the weights matrix.
+        """
+        total_number_functions = sum([len(layer_i.nodes) for layer_i in self.layers])
+
+        print 'Currently there are ', len(self.layers), ' layers'
+        classifiers_coefficients = np.zeros([total_number_functions, self.input_dimension + 1])
+        self.labels_list = [function.label for layer in self.layers for function in layer.nodes]
+        if show_list:
+            print self.labels_list
+        # for count, classifier_i in enumerate(self.classifiers_list):
+        #     coeffs_i = classifier_i.classifier.coef_ \
+        #         if classifier_i.classifier_type == 'standard' else np.zeros([1, 1])
+        #     classifiers_coefficients[count, :coeffs_i.shape[1]] = coeffs_i
+        #     #    print 'Classifier: ', classifier_i
+        #     #    print 'Classifier name: ', classifier_i.label
+        #     #    print 'Out address', classifier_i.out_address
+        #     #    print 'In address', classifier_i.end_in_address
+        #     # print 'Coefficients: ', classifier_i.classifier.coef_, classifier_i.classifier.intercept_
+        # if show_graph:
+        #     decimation_factor = int(self.current_working_memory.shape[0] / 40) + 1
+        #     plt.figure()
+        #     plt.imshow(self.current_working_memory[::decimation_factor,
+        #                self.prediction_column_start:
+        #                self.memory_width], interpolation='none', cmap='gray')
+        #     plt.title('Current working memory')
+        #     # Coefficients matrix plot
+        #     plt.figure()
+        #     plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
+        #     plt.title('Classifier coefficients')
+        #     plt.figure()
+        #     plt.imshow(classifiers_coefficients[:, self.prediction_column_start:], interpolation='none', cmap='gray')
+        #     plt.title('Classifier interdependency')
+        #     plt.show()
+        #
+        #     # Coefficients matrix plot, sparsity, thresholded.
+        #     plt.figure()
+        #     classifiers_coefficients[classifiers_coefficients != 0] = 1
+        #     # The mean number of non zero coefficients, 2 because its triangular.
+        #     print 'Sparsity ratio is ', 2 * classifiers_coefficients.mean()
+        #     plt.imshow(classifiers_coefficients, interpolation='none', cmap='gray')
+        #     plt.title('Sparsity of coefficients')
+        #     # classifier interdependency.
+        #     plt.show()
+        #     return 2 * classifiers_coefficients.mean()
+        # return 0
+
 if __name__ == '__main__':
-    main_classifier = MainClassifier(input_dimension=2)
+    main_classifier = MainClassifier(input_dimension=4)
     # School.task_and(main_classifier, labeled_prediction=True)
     PyDatasetSchool.train_iris_setosa(main_classifier, True)
+    main_classifier.status(show_graph=False, show_list=True)
 
