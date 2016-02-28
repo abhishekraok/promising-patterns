@@ -1,9 +1,14 @@
 from unittest import TestCase
-import sys
 import numpy as np
+from TieredLayeredNN import Layer, NodeClassifier
 
-sys.path.append('..')
-from Tiered_LNN.TieredLayeredNN import NodeClassifier
+
+class TestLayer(TestCase):
+    def test_predict_0_returns_same(self):
+        layer = Layer(0, NodeClassifier('test layer'))
+        X = np.random.randn(3, 3)
+        X2 = layer.predict(X)
+        self.assertEqual(X.__hash__, X2.__hash__)
 
 
 class TestNodeClassifier(TestCase):
