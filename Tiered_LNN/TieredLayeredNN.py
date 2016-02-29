@@ -5,6 +5,7 @@ Todo 27 Feb 2016:
 1. Unit tests, 2
 2. Identify
 3. Save Load
+4. Caffe front end
 '''
 import numpy as np
 from sklearn.metrics import f1_score
@@ -23,6 +24,7 @@ class NodeClassifier:
         """
         self.function = svm.LinearSVC(C=svm_c, dual=False, penalty='l1')
         self.label = label
+        self.width = 0
 
     def __repr__(self):
         return self.label + ' NodeClassifier'
@@ -32,13 +34,21 @@ class NodeClassifier:
         :param X: np.array, a matrix of size (samples, features)
         :param y: np.array, a column vector of size (samples, 1)
         """
+        self.width = X.shape[1]
         self.function.fit(X, y)
 
     def predict(self, X):
         """
         :param X: np.array, a matrix of size (samples, features)
         """
-        return self.function.predict(X).reshape(-1, 1)
+        sample_count = X.shape[0]
+        input_width = X.shape[1]
+        x_correct_shape = np.zeros([sample_count, self.width])
+        if input_width > self.width:
+            x_correct_shape = X[:,:self.width]
+        else:
+            x_correct_shape[:,:input_width] = X
+        return self.function.predict(x_correct_shape).reshape(-1, 1)
 
 
 class Layer:
@@ -59,7 +69,7 @@ class Layer:
             return np.hstack([node_i.predict(X) for node_i in self.nodes])
 
 
-class MainClassifier:
+class TieredLayeredNeuralNetwork:
     def __init__(self, input_dimension):
         self.input_dimension = input_dimension
         self.layers = [Layer(0, NodeClassifier('Raw Input Layer'))]
@@ -85,15 +95,15 @@ class MainClassifier:
         :param X: np.array, a matrix of size (samples, features)
         :param y: np.array, a column vector of size (samples, 1)
         """
-        if X.shape[1] != self.input_dimension:
-            print 'Oye, input dimension is ', X.shape[1], ' and I am made for ', self.input_dimension
+        if X.shape[1] > self.input_dimension:
+            print 'Oye, input dimension is ', X.shape[1], ' is greater than input dimension ', self.input_dimension
             raise BaseException
         x_transformed = self.activate(X)
         accuracy_scores = []
         potential_functions = []
         for X_i in x_transformed:
             new_classifier = NodeClassifier(classifier_name)
-            new_classifier.function.fit(X_i, y)
+            new_classifier.fit(X_i, y)
             accuracy_scores.append(new_classifier.function.score(X_i, y))
             potential_functions.append(new_classifier)
         best_layer = np.argmax(accuracy_scores)
@@ -126,6 +136,10 @@ class MainClassifier:
         yp_score = self.predict(input_x, classifier_name)
         return f1_score(y, y_pred=yp_score)
 
+    def get_labels_list(self):
+        self.labels_list = [function.label for layer in self.layers for function in layer.nodes]
+        return self.labels_list
+
     def status(self, show_graph, show_list):
         """Gives out the current status, like number of functions and prints their values
         :param show_list: Whether to list all the functions
@@ -134,7 +148,7 @@ class MainClassifier:
         total_number_functions = sum([len(layer_i.nodes) for layer_i in self.layers])
         print 'Currently there are ', len(self.layers), ' layers'
         classifiers_coefficients = np.zeros([total_number_functions, self.input_dimension])
-        self.labels_list = [function.label for layer in self.layers for function in layer.nodes]
+        self.labels_list = self.get_labels_list()
         classifier_count = 0
         if show_list:
             print self.labels_list
@@ -158,7 +172,7 @@ class MainClassifier:
 
 
 if __name__ == '__main__':
-    main_classifier = MainClassifier(input_dimension=4)
-    # School.task_and(main_classifier, labeled_prediction=True)
+    main_classifier = TieredLayeredNeuralNetwork(input_dimension=10)
     PyDatasetSchool.train_iris(main_classifier, True)
     main_classifier.status(show_graph=True, show_list=True)
+    PyDatasetSchool.show_types(100)

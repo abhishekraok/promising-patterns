@@ -43,4 +43,19 @@ class PyDatasetSchool:
         unique_labels = list(set(labels))
         for label_i in unique_labels:
             y = np.array([i == label_i for i in labels])
-            PyDatasetSchool.basic_train((X, y),classifier_base_name + label_i , classifier, prediction_label)
+            PyDatasetSchool.basic_train((X, y), classifier_base_name + label_i, classifier, prediction_label)
+
+    @staticmethod
+    def show_types(limit):
+        """
+        Shows all the data labels and types in PyDataset
+
+        :param limit:int, specifies how many of data() to show
+        :return: void
+        """
+        pydataset_labels = data()['dataset_id']
+        for label in pydataset_labels[:limit]:
+            all_data = data(label)
+            print label + ' has shape ' + str(all_data.shape[0]) + ',' + str(all_data.shape[1]) + ' types are '+ ','.join(
+                [str(type(list(all_data[i])[0])) for i in all_data.columns.values])
+            print ""
