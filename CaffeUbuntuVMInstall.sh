@@ -2,7 +2,6 @@ echo "Commands from https://github.com/BVLC/caffe/wiki/Ubuntu-14.04-VirtualBox-V
 sudo apt-get install build-essential
 sudo apt-get install linux-headers-`uname -r`
 sudo apt-get install curl
-cd ~/Downloads/
 curl -O "http://developer.download.nvidia.com/compute/cuda/6_5/rel/installers/cuda_6.5.14_linux_64.run"
 chmod +x cuda_6.5.14_linux_64.run
 sudo ./cuda_6.5.14_linux_64.run --kernel-source-path=/usr/src/linux-headers-`uname -r`/
